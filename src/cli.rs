@@ -48,6 +48,9 @@ pub enum Command {
     /// Devices in the bootstrap service.
     #[command(subcommand)]
     Devices(Devices),
+    /// A device's streams: list, get, start, stop, update, set-destination.
+    #[command(subcommand)]
+    Streams(crate::streams::Streams),
     /// The Control API's operations, their inputs and outputs (OpenAPI), as JSON.
     Schema {
         /// One operation, such as SetWifiNetwork.
@@ -115,7 +118,26 @@ async fn execute(cli: Cli) -> Result<output::Output, Failure> {
             let client = connect(&cli).await?;
             devices(&client, command).await
         }
+        Command::Streams(command) => {
+            // A dry run for a device ID needs no API, so no credentials either.
+            if offline(command) {
+                return crate::streams::run(None, command).await;
+            }
+            let client = connect(&cli).await?;
+            crate::streams::run(Some(&client), command).await
+        }
     }
+}
+
+/// A `--dry-run` change for a device ID (not a thing name, which needs a lookup).
+fn offline(command: &crate::streams::Streams) -> bool {
+    use crate::streams::Streams;
+    let target = match command {
+        Streams::Start(target) | Streams::Stop(target) => target,
+        Streams::Update { target, .. } | Streams::SetDestination { target, .. } => target,
+        Streams::List { .. } | Streams::Get { .. } => return false,
+    };
+    target.dry_run && target.device.starts_with("d-")
 }
 
 /// A client from the settings and the AWS credential chain.

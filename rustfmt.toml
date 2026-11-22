@@ -1,0 +1,6 @@
+# HLD section 12. hex_literal_case and format_macro_matchers are unstable
+# options, so formatting is checked with nightly rustfmt:
+# `cargo +nightly fmt --check`.
+max_width = 100
+hex_literal_case = "Lower"
+format_macro_matchers = true

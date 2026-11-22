@@ -1,0 +1,148 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_LLVM_COV_VERSION: "0.9.1"
+
+jobs:
+  conventional-commits:
+    name: Conventional Commits
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # The title becomes the commit message on main for squash merges. For merge
+      # and rebase merges the PR's own commits land on main, so they're checked too.
+      - name: Check PR title and commit subjects
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -eu
+          echo "PR title:"
+          printf '%s\n' "$PR_TITLE" | sh .github/scripts/check-conventional-commit.sh
+          echo
+          echo "Commits:"
+          git log --no-merges --format=%s "$BASE_SHA..$HEAD_SHA" \
+            | sh .github/scripts/check-conventional-commit.sh
+
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # rustfmt.toml uses unstable options, so formatting is checked with nightly.
+      - name: Install nightly rustfmt
+        run: rustup toolchain install nightly --profile minimal --component rustfmt
+
+      - name: Check formatting
+        run: cargo +nightly fmt --all --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # The helios-contract submodule: the model the bundled OpenAPI is checked against.
+          submodules: true
+
+      # Installs the toolchain pinned in rust-toolchain.toml.
+      - name: Install toolchain
+        run: rustup toolchain install
+
+      - name: Cache Cargo
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: clippy-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+          restore-keys: clippy-${{ runner.os }}-
+
+      - name: Clippy
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
+
+
+  test:
+    name: Test and coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # The helios-contract submodule: the model the bundled OpenAPI is checked against.
+          submodules: true
+
+      - name: Install toolchain and llvm-tools
+        run: |
+          rustup toolchain install
+          rustup component add llvm-tools-preview
+
+      - name: Cache Cargo
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: test-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+          restore-keys: test-${{ runner.os }}-
+
+      - name: Cache cargo-llvm-cov
+        id: llvm-cov-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cargo/bin/cargo-llvm-cov
+          key: cargo-llvm-cov-${{ runner.os }}-${{ env.CARGO_LLVM_COV_VERSION }}-${{ hashFiles('rust-toolchain.toml') }}
+
+      - name: Install cargo-llvm-cov
+        if: steps.llvm-cov-cache.outputs.cache-hit != 'true'
+        run: cargo install cargo-llvm-cov --locked --version "$CARGO_LLVM_COV_VERSION"
+
+      - name: Test
+        run: cargo test --locked --all-targets --all-features
+
+      # HLD section 12: at least 90% line coverage across the workspace. Files
+      # excluded from coverage must be listed here with --ignore-filename-regex.
+      - name: Coverage
+        run: |
+          cargo llvm-cov --locked --workspace --all-features --no-report
+          cargo llvm-cov report --lcov --output-path lcov.info
+          cargo llvm-cov report --html --output-dir coverage
+          cargo llvm-cov report --summary-only --fail-under-lines 90
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: |
+            lcov.info
+            coverage/html
+          if-no-files-found: warn

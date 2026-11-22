@@ -9,6 +9,7 @@ page "Helios - Project Status and Handoff"; open work is the Notion board "Helio
 src/cli.rs      parsing, commands, running a command and its exit code
 src/client.rs   HTTPS with SigV4 (execute-api), retries, the API's errors
 src/streams.rs  streams: changes with client tokens, --dry-run, --wait; passphrase redaction
+src/inventory.rs  inputs, profiles, wifi (passphrase from a file or stdin only)
 src/destination.rs  srt:// and srtla:// checks, ported from helios-cloud's Destinations.java
 src/config.rs   endpoint, profile and region: flag, environment, ~/.config/heliosctl/config.toml
 src/error.rs    failures and the documented exit codes

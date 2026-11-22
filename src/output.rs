@@ -15,6 +15,12 @@ pub enum Output {
     Streams(Value),
     /// `{"stream": {...}}`: GetStream, or a change's result.
     Stream(Value),
+    /// `{"inputs": [...], "reportedAt"}` (ListInputs).
+    Inputs(Value),
+    /// `{"profiles": [...]}` (ListProfiles).
+    Profiles(Value),
+    /// `{"networks": [...], "reportedAt"}` (ListWifiNetworks).
+    Wifi(Value),
     /// Plain JSON either way (`schema`, `--dry-run`).
     Json(Value),
 }
@@ -29,6 +35,9 @@ impl Output {
                 | Self::Device(value)
                 | Self::Streams(value)
                 | Self::Stream(value)
+                | Self::Inputs(value)
+                | Self::Profiles(value)
+                | Self::Wifi(value)
                 | Self::Json(value),
                 true,
             )
@@ -39,6 +48,9 @@ impl Output {
             (Self::Device(value), false) => device(value),
             (Self::Streams(value), false) => streams(value),
             (Self::Stream(value), false) => stream(&value["stream"]),
+            (Self::Inputs(value), false) => inputs(value),
+            (Self::Profiles(value), false) => profiles(value),
+            (Self::Wifi(value), false) => wifi(value),
         }
     }
 }
@@ -128,6 +140,103 @@ fn table<const N: usize>(header: [&str; N], rows: &[[String; N]], empty: &str) -
         let _ = writeln!(out, "({empty})");
     }
     out.trim_end().to_owned()
+}
+
+fn rows<const N: usize>(
+    value: &Value,
+    key: &str,
+    row: impl Fn(&Value) -> [String; N],
+) -> Vec<[String; N]> {
+    value[key]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(row)
+        .collect()
+}
+
+fn reported(out: String, value: &Value) -> String {
+    match value["reportedAt"].as_str() {
+        Some(at) => format!("{out}\n(reported {at})"),
+        None => out,
+    }
+}
+
+fn inputs(value: &Value) -> String {
+    let rows = rows(value, "inputs", |input| {
+        let (kind, details) = crate::inventory::kind(input);
+        let what = details["selector"]
+            .as_str()
+            .or(details["key"].as_str())
+            .unwrap_or_default()
+            .to_owned();
+        let about = [&details["manufacturer"], &details["product"]]
+            .iter()
+            .filter_map(|v| v.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+        let extra = match kind.as_str() {
+            "camera" if details["hasAudio"] == true => "has audio".to_owned(),
+            "rtmp" => details["publisher"]
+                .as_object()
+                .map_or("idle", |_| "publishing")
+                .to_owned(),
+            _ => String::new(),
+        };
+        [kind, what, text(&details["port"]), about, extra]
+    });
+    reported(
+        table(
+            ["KIND", "SELECTOR", "PORT", "DEVICE", "NOTE"],
+            &rows,
+            "no inputs",
+        ),
+        value,
+    )
+}
+
+fn profiles(value: &Value) -> String {
+    let rows = rows(value, "profiles", |profile| {
+        [
+            text(&profile["name"]),
+            text(&profile["video"]),
+            text(&profile["encoder"]),
+            text(&profile["bitrateMode"]),
+            text(&profile["bitrateKbps"]),
+            format!(
+                "{}-{}",
+                text(&profile["minBitrateKbps"]),
+                text(&profile["maxBitrateKbps"])
+            ),
+            text(&profile["audio"]),
+        ]
+    });
+    table(
+        [
+            "PROFILE", "VIDEO", "ENCODER", "MODE", "KBPS", "RANGE", "AUDIO",
+        ],
+        &rows,
+        "no profiles",
+    )
+}
+
+fn wifi(value: &Value) -> String {
+    let rows = rows(value, "networks", |network| {
+        [
+            text(&network["ssid"]),
+            text(&network["security"]),
+            if network["hidden"] == true {
+                "yes"
+            } else {
+                "no"
+            }
+            .into(),
+        ]
+    });
+    reported(
+        table(["SSID", "SECURITY", "HIDDEN"], &rows, "no networks"),
+        value,
+    )
 }
 
 fn streams(value: &Value) -> String {
@@ -311,6 +420,53 @@ mod tests {
         ] {
             assert!(summary.contains(line), "{line}\n{summary}");
         }
+    }
+
+    #[test]
+    fn people_get_inputs_profiles_and_networks() {
+        let inputs = Output::Inputs(json!({"inputs": [
+            {"camera": {"selector": "0bda:5830:CAM1", "port": "usb:1-1", "manufacturer": "Acme",
+                        "product": "Cam", "hasAudio": true}},
+            {"audio": {"selector": "hw:1", "port": "usb:1-2"}},
+            {"rtmp": {"key": "ingest", "publisher": {"address": "192.0.2.1"}}},
+            {"rtmp": {"key": "ingest-2"}},
+            {"test": {}},
+        ], "reportedAt": "2026-11-22T00:00:00Z"}))
+        .render(false);
+        let lines: Vec<&str> = inputs.lines().collect();
+        assert!(
+            lines[1].contains("0bda:5830:CAM1") && lines[1].contains("Acme Cam"),
+            "{inputs}"
+        );
+        assert!(lines[1].ends_with("has audio"), "{inputs}");
+        assert!(
+            lines[3].ends_with("publishing") && lines[4].ends_with("idle"),
+            "{inputs}"
+        );
+        assert!(inputs.ends_with("(reported 2026-11-22T00:00:00Z)"));
+        let profiles =
+            Output::Profiles(json!({"profiles": [{"name": "hevc", "video": "hevc_rkmpp",
+            "encoder": "belacoder", "bitrateMode": "adaptive", "bitrateKbps": 6000,
+            "minBitrateKbps": 1000, "maxBitrateKbps": 8000, "audio": "copy"}]}))
+            .render(false);
+        assert!(
+            profiles.contains("1000-8000") && profiles.contains("belacoder"),
+            "{profiles}"
+        );
+        let networks = Output::Wifi(json!({"networks": [
+            {"ssid": "Home", "security": "personal", "hidden": false},
+            {"ssid": "Back", "security": "open", "hidden": true},
+        ]}))
+        .render(false);
+        assert!(
+            networks.lines().nth(2).unwrap().ends_with("yes"),
+            "{networks}"
+        );
+        assert!(
+            Output::Wifi(json!({"networks": []}))
+                .render(false)
+                .contains("(no networks)")
+        );
     }
 
     #[test]

@@ -6,5 +6,6 @@ pub mod client;
 pub mod config;
 pub mod destination;
 pub mod error;
+pub mod inventory;
 pub mod output;
 pub mod streams;

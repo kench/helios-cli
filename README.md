@@ -96,6 +96,13 @@ source_profile = helios-login
 region = us-west-2
 ```
 
+## Manual pages
+
+`man/` holds `heliosctl(1)` and a page per subcommand (`heliosctl-streams-start(1)`, ...), generated
+from the command line's own definitions: `man -l man/heliosctl.1`, or put `man/` on your
+`MANPATH`. After changing a command, flag or help text, run `cargo run --example manpages`; a test
+fails until the pages match.
+
 ## Development
 
 ```sh

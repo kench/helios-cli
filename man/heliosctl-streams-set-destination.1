@@ -1,0 +1,55 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH heliosctl-streams-set-destination 1 0.1.0 "heliosctl 0.1.0" "Helios Manual"
+.SH NAME
+heliosctl\-streams\-set\-destination \- Set where a stream goes: an srt:// or srtla:// URL
+.SH SYNOPSIS
+\fBheliosctl streams set\-destination\fR [\fB\-\-dry\-run\fR] [\fB\-\-json\fR] [\fB\-\-endpoint\fR] [\fB\-\-wait\fR] [\fB\-\-profile\fR] [\fB\-\-timeout\fR] [\fB\-\-client\-token\fR] [\fB\-\-region\fR] [\fB\-\-url\fR] [\fB\-\-url\-file\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIDEVICE\fR> <\fISTREAM\fR> 
+.SH DESCRIPTION
+Set where a stream goes: an srt:// or srtla:// URL.
+.PP
+A URL with an SRT passphrase must come from a file or stdin (\-\-url\-file \-), never the command line.
+.SH OPTIONS
+.TP
+\fB\-\-dry\-run\fR
+Check the input and print the request without sending it
+.TP
+\fB\-\-json\fR
+Print one JSON document on stdout, and errors as JSON on stderr
+.TP
+\fB\-\-endpoint\fR \fI<ENDPOINT>\fR
+The Control API\*(Aqs base URL (…/dev)
+.TP
+\fB\-\-wait\fR
+Wait until the device has applied the change
+.TP
+\fB\-\-profile\fR \fI<PROFILE>\fR
+The AWS profile: one that assumes helios\-operator [default: helios\-operator]
+.TP
+\fB\-\-timeout\fR \fI<TIMEOUT>\fR [default: 60]
+How long \-\-wait waits, in seconds
+.TP
+\fB\-\-client\-token\fR \fI<CLIENT_TOKEN>\fR
+Makes the change safe to retry (default: a new random one)
+.TP
+\fB\-\-region\fR \fI<REGION>\fR
+The AWS region [default: the profile\*(Aqs]
+.TP
+\fB\-\-url\fR \fI<URL>\fR
+The URL, if it has no passphrase
+.TP
+\fB\-\-url\-file\fR \fI<URL_FILE>\fR
+A file holding the URL, or \- for stdin
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIDEVICE\fR>
+A device ID (d\-…) or thing name (t\-…)
+.TP
+<\fISTREAM\fR>
+The stream\*(Aqs name
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.SH "SEE ALSO"
+\fBheliosctl\fR(1), for exit status, environment, files and security.

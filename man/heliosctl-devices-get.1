@@ -1,0 +1,34 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH heliosctl-devices-get 1 0.1.0 "heliosctl 0.1.0" "Helios Manual"
+.SH NAME
+heliosctl\-devices\-get \- One device: its record, connection, Helios version and modules
+.SH SYNOPSIS
+\fBheliosctl devices get\fR [\fB\-\-json\fR] [\fB\-\-endpoint\fR] [\fB\-\-profile\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIDEVICE\fR> 
+.SH DESCRIPTION
+One device: its record, connection, Helios version and modules.
+.PP
+The device is its device ID (d\-…) or its thing name (t\-…).
+.SH OPTIONS
+.TP
+\fB\-\-json\fR
+Print one JSON document on stdout, and errors as JSON on stderr
+.TP
+\fB\-\-endpoint\fR \fI<ENDPOINT>\fR
+The Control API\*(Aqs base URL (…/dev)
+.TP
+\fB\-\-profile\fR \fI<PROFILE>\fR
+The AWS profile: one that assumes helios\-operator [default: helios\-operator]
+.TP
+\fB\-\-region\fR \fI<REGION>\fR
+The AWS region [default: the profile\*(Aqs]
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIDEVICE\fR>
+A device ID or thing name
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.SH "SEE ALSO"
+\fBheliosctl\fR(1), for exit status, environment, files and security.

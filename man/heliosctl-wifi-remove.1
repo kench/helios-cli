@@ -1,0 +1,38 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH heliosctl-wifi-remove 1 0.1.0 "heliosctl 0.1.0" "Helios Manual"
+.SH NAME
+heliosctl\-wifi\-remove \- Remove a network
+.SH SYNOPSIS
+\fBheliosctl wifi remove\fR [\fB\-\-json\fR] [\fB\-\-dry\-run\fR] [\fB\-\-endpoint\fR] [\fB\-\-profile\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fB\-\-ssid\fR> <\fIDEVICE\fR> 
+.SH DESCRIPTION
+Remove a network
+.SH OPTIONS
+.TP
+\fB\-\-json\fR
+Print one JSON document on stdout, and errors as JSON on stderr
+.TP
+\fB\-\-ssid\fR \fI<SSID>\fR
+The network\*(Aqs name (SSID)
+.TP
+\fB\-\-dry\-run\fR
+Print the request without sending it
+.TP
+\fB\-\-endpoint\fR \fI<ENDPOINT>\fR
+The Control API\*(Aqs base URL (…/dev)
+.TP
+\fB\-\-profile\fR \fI<PROFILE>\fR
+The AWS profile: one that assumes helios\-operator [default: helios\-operator]
+.TP
+\fB\-\-region\fR \fI<REGION>\fR
+The AWS region [default: the profile\*(Aqs]
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIDEVICE\fR>
+A device ID (d\-…) or thing name (t\-…)
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.SH "SEE ALSO"
+\fBheliosctl\fR(1), for exit status, environment, files and security.

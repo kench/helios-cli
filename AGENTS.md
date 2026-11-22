@@ -16,7 +16,9 @@ src/error.rs    failures and the documented exit codes
 src/output.rs   --json (the API's response) or a summary for people
 schema/         the contract release's HeliosControl.openapi.json (heliosctl schema)
 contract/       git submodule: helios-contract, pinned to the tag the schema came from
-tests/          the binary end to end against a local server
+tests/          the binary end to end against a local server; manpages.rs checks man/
+examples/manpages.rs  generates man/ from the clap definitions (cargo run --example manpages)
+man/            the generated manual pages (checked in; never edit by hand)
 ```
 
 ## Rules

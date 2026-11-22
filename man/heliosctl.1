@@ -1,0 +1,139 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH heliosctl 1 0.1.0 "heliosctl 0.1.0" "Helios Manual"
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.SH NAME
+heliosctl \- The Helios Control API\*(Aqs command\-line client, for operators and AI agents
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.SH SYNOPSIS
+\fBheliosctl\fR [\fB\-\-json\fR] [\fB\-\-endpoint\fR] [\fB\-\-profile\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] <\fIsubcommands\fR>
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.SH DESCRIPTION
+The Helios Control API\*(Aqs command\-line client, for operators and AI agents (HLD 7.3.4.1). Requests are signed with your AWS credentials (an AWS profile that assumes helios\-operator). Every command takes \-\-json for one JSON document on stdout; errors then go to stderr as JSON, and the exit code says what happened: 0 done, 1 other, 2 invalid input, 3 not found, 4 refused, 5 timed out, 6 not authorized, 7 not reported yet, 8 throttled.
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.SH OPTIONS
+.TP
+\fB\-\-json\fR
+Print one JSON document on stdout, and errors as JSON on stderr
+.TP
+\fB\-\-endpoint\fR \fI<ENDPOINT>\fR
+The Control API\*(Aqs base URL (…/dev)
+.TP
+\fB\-\-profile\fR \fI<PROFILE>\fR
+The AWS profile: one that assumes helios\-operator [default: helios\-operator]
+.TP
+\fB\-\-region\fR \fI<REGION>\fR
+The AWS region [default: the profile\*(Aqs]
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.SH SUBCOMMANDS
+.TP
+heliosctl\-devices(1)
+Devices in the bootstrap service
+.TP
+heliosctl\-streams(1)
+A device\*(Aqs streams: list, get, start, stop, update, set\-destination
+.TP
+heliosctl\-inputs(1)
+What a device can stream from
+.TP
+heliosctl\-profiles(1)
+A device\*(Aqs encoding profiles
+.TP
+heliosctl\-wifi(1)
+The Wi\-Fi networks a device joins: list, set, remove
+.TP
+heliosctl\-schema(1)
+The Control API\*(Aqs operations, their inputs and outputs (OpenAPI), as JSON
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.SH "EXIT STATUS"
+.TP
+\fB0\fR
+Done (with \-\-wait: the device applied the change).
+.TP
+\fB1\fR
+Anything else: a network error, an internal error, a response that doesn\*(Aqt parse.
+.TP
+\fB2\fR
+Invalid input: a usage error, ValidationException, InvalidDestination, or a \-\-dry\-run that failed its checks.
+.TP
+\fB3\fR
+Not found: DeviceNotFound, StreamNotFound.
+.TP
+\fB4\fR
+Refused: SettingUnavailable, WifiNetworkRefused, or (with \-\-wait) the device rejected the change.
+.TP
+\fB5\fR
+Timed out: DeviceUnreachable, or \-\-wait ran out of time (the device may still apply it).
+.TP
+\fB6\fR
+Not authorized: no AWS credentials, or HTTP 403.
+.TP
+\fB7\fR
+The device hasn\*(Aqt reported that yet: DeviceStateUnavailable.
+.TP
+\fB8\fR
+Throttled: RateLimited, after retries.
+With \-\-json, the error is one JSON document on standard error: {"error": {"type", "message", ...the error\*(Aqs members}}.
+.SH ENVIRONMENT
+.TP
+\fBHELIOS_CONTROL_URL\fR
+The Control API\*(Aqs base URL, as \-\-endpoint.
+.TP
+\fBAWS_PROFILE\fR
+The AWS profile, as \-\-profile (default helios\-operator).
+.TP
+\fBAWS_REGION\fR
+The AWS region, as \-\-region (default: the profile\*(Aqs).
+.TP
+\fBAWS_CONFIG_FILE, AWS_SHARED_CREDENTIALS_FILE\fR
+Where the AWS SDK finds profiles and credentials.
+.SH FILES
+.TP
+\fI~/.config/heliosctl/config.toml\fR
+Settings, each used when its flag and environment variable aren\*(Aqt given: endpoint, profile and region. None of them is a secret.
+.TP
+\fI~/.aws/config\fR
+The AWS profiles. The default profile, helios\-operator, should assume the helios\-operator role. The Rust AWS SDK can\*(Aqt read aws login sessions: give such a profile a credential_process of aws configure export\-credentials \-\-profile <profile> \-\-format process, and use it as helios\-operator\*(Aqs source_profile.
+.SH SECURITY
+heliosctl stores no credentials: requests are signed with SigV4 from the AWS credential chain. A Wi\-Fi passphrase is read only from \-\-passphrase\-file (or \- for standard input), and an SRT destination with a passphrase only from \-\-url\-file, never from an argument, so neither reaches shell history or the process list. Neither is ever printed: dry runs and output show ***.
+.SH EXAMPLES
+List devices:
+.RS 4
+\fBheliosctl devices list\fR
+.RE
+One device as JSON:
+.RS 4
+\fBheliosctl \-\-json devices get t\-01M80KAX049HNYQ4K9NYP8SNFH\fR
+.RE
+Check a change without sending it:
+.RS 4
+\fBheliosctl streams update d\-01M80KB9C9T0ZSPC64NZVY1QRA pocket \-\-bitrate 3000 \-\-dry\-run\fR
+.RE
+Start a stream and wait until it\*(Aqs applied:
+.RS 4
+\fBheliosctl streams start t\-01M80KAX049HNYQ4K9NYP8SNFH pocket \-\-wait\fR
+.RE
+Add a Wi\-Fi network, passphrase on standard input:
+.RS 4
+\fBheliosctl wifi set t\-01M80KAX049HNYQ4K9NYP8SNFH \-\-ssid Venue \-\-passphrase\-file \- < passphrase.txt\fR
+.RE
+An operation\*(Aqs input and output shapes:
+.RS 4
+\fBheliosctl schema SetWifiNetwork\fR
+.RE
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.SH VERSION
+v0.1.0

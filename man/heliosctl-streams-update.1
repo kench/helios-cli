@@ -1,0 +1,59 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH heliosctl-streams-update 1 0.1.0 "heliosctl 0.1.0" "Helios Manual"
+.SH NAME
+heliosctl\-streams\-update \- Change a stream\*(Aqs source, profile, bitrate or source ceiling
+.SH SYNOPSIS
+\fBheliosctl streams update\fR [\fB\-\-dry\-run\fR] [\fB\-\-json\fR] [\fB\-\-endpoint\fR] [\fB\-\-wait\fR] [\fB\-\-profile\fR] [\fB\-\-timeout\fR] [\fB\-\-client\-token\fR] [\fB\-\-region\fR] [\fB\-\-source\fR] [\fB\-\-encoding\-profile\fR] [\fB\-\-bitrate\fR] [\fB\-\-source\-ceiling\-percent\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIDEVICE\fR> <\fISTREAM\fR> 
+.SH DESCRIPTION
+Change a stream\*(Aqs source, profile, bitrate or source ceiling
+.SH OPTIONS
+.TP
+\fB\-\-dry\-run\fR
+Check the input and print the request without sending it
+.TP
+\fB\-\-json\fR
+Print one JSON document on stdout, and errors as JSON on stderr
+.TP
+\fB\-\-endpoint\fR \fI<ENDPOINT>\fR
+The Control API\*(Aqs base URL (…/dev)
+.TP
+\fB\-\-wait\fR
+Wait until the device has applied the change
+.TP
+\fB\-\-profile\fR \fI<PROFILE>\fR
+The AWS profile: one that assumes helios\-operator [default: helios\-operator]
+.TP
+\fB\-\-timeout\fR \fI<TIMEOUT>\fR [default: 60]
+How long \-\-wait waits, in seconds
+.TP
+\fB\-\-client\-token\fR \fI<CLIENT_TOKEN>\fR
+Makes the change safe to retry (default: a new random one)
+.TP
+\fB\-\-region\fR \fI<REGION>\fR
+The AWS region [default: the profile\*(Aqs]
+.TP
+\fB\-\-source\fR \fI<SOURCE>\fR
+camera:<video>[,audio=<device>], rtmp:<key>, or test[:<WxH>][@<fps>]
+.TP
+\fB\-\-encoding\-profile\fR \fI<NAME>\fR
+The encoding profile\*(Aqs name (\-\-profile is the AWS profile)
+.TP
+\fB\-\-bitrate\fR \fI<BITRATE>\fR
+A bitrate override in kbit/s (100–100000), or `default` for the profile\*(Aqs
+.TP
+\fB\-\-source\-ceiling\-percent\fR \fI<SOURCE_CEILING_PERCENT>\fR
+Adaptive RTMP streams: the ceiling as a percentage of the camera\*(Aqs bitrate (0–400)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIDEVICE\fR>
+A device ID (d\-…) or thing name (t\-…)
+.TP
+<\fISTREAM\fR>
+The stream\*(Aqs name
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.SH "SEE ALSO"
+\fBheliosctl\fR(1), for exit status, environment, files and security.

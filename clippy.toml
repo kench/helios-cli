@@ -1,0 +1,2 @@
+# unwrap_used is denied outside tests (HLD section 12).
+allow-unwrap-in-tests = true

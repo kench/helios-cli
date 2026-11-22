@@ -1,0 +1,6 @@
+# Pinned stable toolchain (HLD section 12). Nightly is used only for rustfmt:
+# `cargo +nightly fmt --check`.
+[toolchain]
+channel = "1.100.0"
+components = ["clippy", "rustfmt"]
+profile = "minimal"

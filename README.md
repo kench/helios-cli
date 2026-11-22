@@ -16,6 +16,13 @@ heliosctl streams update t-01M80KAX… pocket --bitrate 3000 --dry-run
 heliosctl streams update t-01M80KAX… pocket --source rtmp:ingest --encoding-profile hevc
 heliosctl streams set-destination t-01M80KAX… pocket --url 'srtla://10.0.0.1:5000'
 heliosctl streams set-destination t-01M80KAX… pocket --url-file - < destination.txt
+
+heliosctl inputs list t-01M80KAX…
+heliosctl profiles list t-01M80KAX…
+heliosctl wifi list t-01M80KAX…
+heliosctl wifi set t-01M80KAX… --ssid 'Venue Media' --passphrase-file - < passphrase.txt
+heliosctl wifi set t-01M80KAX… --ssid 'Guest' --open
+heliosctl wifi remove t-01M80KAX… --ssid 'Guest'
 ```
 
 Sources: `camera:<video>[,audio=<device>]` (`usb:1-1.3` or `<vid>:<pid>:<serial>`),
@@ -33,6 +40,8 @@ Sources: `camera:<video>[,audio=<device>]` (`usb:1-1.3` or `<vid>:<pid>:<serial>
   rules and prints `{"dryRun": true, "request": {...}}` without sending; for a device ID it needs
   no credentials. `--wait [--timeout 60]` polls until the device applied the change (0), refused
   it (4) or the time ran out (5).
+- A Wi-Fi passphrase only comes from `--passphrase-file` (or `-` for stdin), never an argument,
+  and is never printed (`--dry-run` shows `***`). `wifi set` needs `--passphrase-file` or `--open`.
 - SRT passphrases are never printed (`passphrase=***`), and a destination with one is read from
   `--url-file` (or `-` for stdin), never the command line.
 - `heliosctl schema [operation]` prints the API's OpenAPI description (the contract's release

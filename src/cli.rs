@@ -51,6 +51,15 @@ pub enum Command {
     /// A device's streams: list, get, start, stop, update, set-destination.
     #[command(subcommand)]
     Streams(crate::streams::Streams),
+    /// What a device can stream from.
+    #[command(subcommand)]
+    Inputs(crate::inventory::Inputs),
+    /// A device's encoding profiles.
+    #[command(subcommand)]
+    Profiles(crate::inventory::Profiles),
+    /// The Wi-Fi networks a device joins: list, set, remove.
+    #[command(subcommand)]
+    Wifi(crate::inventory::Wifi),
     /// The Control API's operations, their inputs and outputs (OpenAPI), as JSON.
     Schema {
         /// One operation, such as SetWifiNetwork.
@@ -125,6 +134,17 @@ async fn execute(cli: Cli) -> Result<output::Output, Failure> {
             }
             let client = connect(&cli).await?;
             crate::streams::run(Some(&client), command).await
+        }
+        Command::Inputs(command) => crate::inventory::inputs(&connect(&cli).await?, command).await,
+        Command::Profiles(command) => {
+            crate::inventory::profiles(&connect(&cli).await?, command).await
+        }
+        Command::Wifi(command) => {
+            if crate::inventory::offline(command) {
+                return crate::inventory::wifi(None, command).await;
+            }
+            let client = connect(&cli).await?;
+            crate::inventory::wifi(Some(&client), command).await
         }
     }
 }

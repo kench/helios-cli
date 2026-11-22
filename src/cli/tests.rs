@@ -184,3 +184,29 @@ async fn lists_and_gets_devices() {
         "/dev/v1/control/devices/d-1"
     );
 }
+
+#[test]
+fn the_command_line_is_well_formed() {
+    // Catches clashing argument names, such as a command's --profile hiding the global one.
+    <Cli as clap::CommandFactory>::command().debug_assert();
+}
+
+#[tokio::test]
+async fn a_dry_run_for_a_device_id_needs_no_api() {
+    let (code, out, err) = run_args(&[
+        "--json",
+        "streams",
+        "start",
+        "d-01M80KB9C9T0ZSPC64NZVY1QRA",
+        "main",
+        "--dry-run",
+        "--client-token",
+        "t1",
+    ])
+    .await;
+    assert_eq!(code, 0, "{err}");
+    let printed: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(printed["request"]["body"], json!({"clientToken": "t1"}));
+    let (code, _, _) = run_args(&["streams", "update", "d-1", "main", "--dry-run"]).await;
+    assert_eq!(code, 2, "nothing to change");
+}

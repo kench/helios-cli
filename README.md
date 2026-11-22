@@ -9,7 +9,18 @@ The Helios Control API's command-line client, for operators and AI agents (HLD 7
 heliosctl devices list
 heliosctl --json devices get t-01M80KAX049HNYQ4K9NYP8SNFH
 heliosctl schema SetWifiNetwork
+
+heliosctl streams list t-01M80KAX049HNYQ4K9NYP8SNFH
+heliosctl streams start t-01M80KAX049HNYQ4K9NYP8SNFH pocket --wait
+heliosctl streams update t-01M80KAX… pocket --bitrate 3000 --dry-run
+heliosctl streams update t-01M80KAX… pocket --source rtmp:ingest --encoding-profile hevc
+heliosctl streams set-destination t-01M80KAX… pocket --url 'srtla://10.0.0.1:5000'
+heliosctl streams set-destination t-01M80KAX… pocket --url-file - < destination.txt
 ```
+
+Sources: `camera:<video>[,audio=<device>]` (`usb:1-1.3` or `<vid>:<pid>:<serial>`),
+`rtmp:<key>` (`ingest`, `ingest-<n>`), `test[:<WxH>][@<fps>]`. Bitrates: kbit/s, or `default`.
+`--profile` is always the AWS profile; a stream's profile is `--encoding-profile`.
 
 ## For agents
 
@@ -17,6 +28,13 @@ heliosctl schema SetWifiNetwork
   with the model's member names. Errors then go to stderr as
   `{"error": {"type", "message", ...the error's members}}`.
 - Never interactive: no prompts, no pager, no browser.
+- Changes (`streams start|stop|update|set-destination`) carry a client token (`--client-token`,
+  default random), so they're retried safely. `--dry-run` checks the input with the service's
+  rules and prints `{"dryRun": true, "request": {...}}` without sending; for a device ID it needs
+  no credentials. `--wait [--timeout 60]` polls until the device applied the change (0), refused
+  it (4) or the time ran out (5).
+- SRT passphrases are never printed (`passphrase=***`), and a destination with one is read from
+  `--url-file` (or `-` for stdin), never the command line.
 - `heliosctl schema [operation]` prints the API's OpenAPI description (the contract's release
   file, `schema/HeliosControl.openapi.json`, checked in tests against the pinned model).
 - Exit codes:

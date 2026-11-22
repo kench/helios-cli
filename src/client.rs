@@ -40,7 +40,9 @@ pub enum Method {
 }
 
 impl Method {
-    fn as_str(self) -> &'static str {
+    /// The HTTP method's name.
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
         match self {
             Self::Get => "GET",
             Self::Post => "POST",

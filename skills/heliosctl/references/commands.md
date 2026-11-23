@@ -52,6 +52,17 @@ once the device has applied it (`pending: false`), or fails with exit 4 (a new e
 - `heliosctl --json profiles list <device>`: encoding profiles: `name`, `video` (encoder),
   `encoder`, `bitrateMode`, `bitrateKbps`, `minBitrateKbps`, `maxBitrateKbps`, `audio`.
 
+## Location
+
+- `heliosctl --json location <device>`: the device's GPS state (GetDeviceLocation): `gpsd`
+  (`connected` or `unavailable`), `fix` (`mode`: `none`, `2d` or `3d`; with a fix, `time`,
+  `latitude`, `longitude`, `altitudeM`, `speedMps`, `trackDeg`, `climbMps`,
+  `horizontalErrorM`, `verticalErrorM`), `lastFix` (the last fix, while `fix` is `none`; its
+  `time` says how old it is), `satellites` (`used`, `visible`, `hdop`, `pdop`), `receivers`,
+  `since` (when the fix mode last changed), `configuredReceiver` and `reportedAt`. Exit 7
+  (`DeviceStateUnavailable`) when the device has never reported GPS. **This is the device's
+  exact position.**
+
 ## Wi-Fi
 
 - `heliosctl --json wifi list <device>`: the networks the device joins: `ssid`, `security`

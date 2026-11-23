@@ -59,6 +59,8 @@ order below, and ask the user before anything disruptive.
 - An SRT destination URL with `passphrase=` must come from `--url-file` (or `-`), never `--url`.
   heliosctl shows passphrases as `***`; don't try to recover them.
 - Never print, log or repeat a passphrase, PIN or AWS key.
+- `location` returns the device's exact position. Answer the user directly when they ask where
+  it is, but don't copy coordinates into notes, issues, commits, logs or anything shared.
 
 ## Exit codes
 
@@ -94,6 +96,8 @@ Common tasks:
   selector, then `streams update … --source camera:<selector>` (dry run first).
 - Send a stream somewhere new: `streams set-destination <device> <stream> --url srt://host:port?streamid=...`
   (dry run first; `--url-file -` if it has a passphrase).
+- Where is it: `heliosctl --json location <device>`. With no current fix, say so and give
+  `lastFix` with its time (how old it is), not as if it were current.
 - Add a Wi-Fi network: ask the user to run
   `heliosctl --json wifi set <device> --ssid <ssid> --passphrase-file -` themselves with the
   passphrase on stdin, unless they've given you a file holding it.

@@ -1098,6 +1098,103 @@
                 }
             }
         },
+        "/v1/control/devices/{deviceId}/uplinks": {
+            "get": {
+                "description": "The device's network interfaces, as its net module last reported them (LLD 3), and what each\nSRTLA bond does with them: bonded, or held in standby because a better uplink shares its\npublic address (LLD 3, section 3.5.1).\n\nPublic IPv4 addresses are personal data (they locate the connection, often a home), so the\naddress itself is returned only with `includePublicAddresses`. `sharesPublicAddressWith` is\nalways returned, so shared connections can be seen without the address. Implementations\nmustn't log public addresses.",
+                "operationId": "GetDeviceUplinks",
+                "parameters": [
+                    {
+                        "name": "deviceId",
+                        "in": "path",
+                        "description": "Service-generated device ID: \"d-\" followed by a ULID.",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^d-[0-9A-HJKMNP-TV-Z]{26}$",
+                            "description": "Service-generated device ID: \"d-\" followed by a ULID."
+                        },
+                        "required": true
+                    },
+                    {
+                        "name": "includePublicAddresses",
+                        "in": "query",
+                        "description": "Also return each uplink's public IPv4 address. Off by default.",
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Also return each uplink's public IPv4 address. Off by default."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "GetDeviceUplinks 200 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GetDeviceUplinksResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "ValidationException 400 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationExceptionResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "DeviceNotFound 404 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeviceNotFoundResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "DeviceStateUnavailable 409 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeviceStateUnavailableResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "RateLimited 429 response",
+                        "headers": {
+                            "Retry-After": {
+                                "schema": {
+                                    "type": "number"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RateLimitedResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "InternalError 500 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalErrorResponseContent"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/control/devices/{deviceId}/wifi/networks": {
             "delete": {
                 "description": "Removes a Wi-Fi network from the device (an AWS IoT command execution, helios-net-wifi-remove,\nHelios's net.wifi.remove). Removing one the device doesn't have succeeds. The device must be\nonline, as for SetWifiNetwork.",
@@ -1714,6 +1811,26 @@
                     "device"
                 ]
             },
+            "GetDeviceUplinksResponseContent": {
+                "type": "object",
+                "properties": {
+                    "uplinks": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Uplink"
+                        },
+                        "description": "Every interface the device reported, by name."
+                    },
+                    "reportedAt": {
+                        "type": "string",
+                        "description": "When the device last reported its interfaces.",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "uplinks"
+                ]
+            },
             "GetStreamResponseContent": {
                 "type": "object",
                 "properties": {
@@ -2093,6 +2210,41 @@
                     "minBitrateKbps",
                     "name",
                     "video"
+                ]
+            },
+            "PublicAddressCheck": {
+                "type": "object",
+                "properties": {
+                    "address": {
+                        "type": "string",
+                        "description": "The public IPv4 address the latest successful check saw. Only with\n`includePublicAddresses`."
+                    },
+                    "sharesPublicAddressWith": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "maxLength": 15,
+                            "minLength": 1
+                        },
+                        "description": "The other interfaces whose latest checks saw the same public address: they leave\nthrough the same connection."
+                    },
+                    "checkedAt": {
+                        "type": "string",
+                        "description": "When the address was last checked and found (the device reports a check that found the\nsame address again at most hourly).",
+                        "format": "date-time"
+                    },
+                    "error": {
+                        "type": "string",
+                        "description": "Why the latest check failed (for example timeout, connect or http 403), if it did. The\nlast address found stays, and doesn't count for `sharesPublicAddressWith`."
+                    },
+                    "failedAt": {
+                        "type": "string",
+                        "description": "Timestamp serialized as an RFC 3339 string in UTC.",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "sharesPublicAddressWith"
                 ]
             },
             "RateLimitedResponseContent": {
@@ -2606,6 +2758,109 @@
                     "shadowVersion",
                     "stream"
                 ]
+            },
+            "Uplink": {
+                "type": "object",
+                "properties": {
+                    "interface": {
+                        "type": "string",
+                        "maxLength": 15,
+                        "minLength": 1,
+                        "description": "The interface's name on the device, for example enP4p65s0 or wwan0."
+                    },
+                    "kind": {
+                        "type": "string",
+                        "description": "What the device thinks it is: ethernet (built-in or USB), wifi, cellular, virtual or\nother. New kinds may be added."
+                    },
+                    "operState": {
+                        "type": "string",
+                        "description": "The kernel's operational state, for example up, down or dormant."
+                    },
+                    "carrier": {
+                        "type": "boolean",
+                        "description": "Whether the link has a carrier (a cable, an association, a modem connection)."
+                    },
+                    "ipv4": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Its IPv4 addresses, with prefix length (for example 192.168.5.31/24)."
+                    },
+                    "defaultRouteMetric": {
+                        "type": "number",
+                        "description": "The lowest metric of its IPv4 default routes in the main table; absent without one.\nLower is preferred."
+                    },
+                    "sourceRouted": {
+                        "type": "boolean",
+                        "description": "Whether it has its own routing table and rule, so traffic from its address leaves\nthrough it. SRTLA bonding and the public address check need this."
+                    },
+                    "wifi": {
+                        "$ref": "#/components/schemas/UplinkWifi"
+                    },
+                    "publicIpv4": {
+                        "$ref": "#/components/schemas/PublicAddressCheck"
+                    },
+                    "bonding": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/UplinkBonding"
+                        },
+                        "description": "What each SRTLA bond on the device does with it, while the bond is running."
+                    }
+                },
+                "required": [
+                    "bonding",
+                    "interface",
+                    "ipv4",
+                    "kind",
+                    "operState",
+                    "sourceRouted"
+                ]
+            },
+            "UplinkBonding": {
+                "type": "object",
+                "properties": {
+                    "output": {
+                        "type": "string",
+                        "description": "The device's output name, as a stream's output refers to it (for example bond)."
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/UplinkBondingState"
+                    },
+                    "sharesPublicAddressWith": {
+                        "type": "string",
+                        "maxLength": 15,
+                        "minLength": 1,
+                        "description": "For standby: the bonded interface it shares a public address with."
+                    }
+                },
+                "required": [
+                    "output",
+                    "state"
+                ]
+            },
+            "UplinkBondingState": {
+                "type": "string",
+                "enum": [
+                    "bonded",
+                    "standby"
+                ]
+            },
+            "UplinkWifi": {
+                "type": "object",
+                "properties": {
+                    "ssid": {
+                        "type": "string"
+                    },
+                    "signalDbm": {
+                        "type": "number",
+                        "description": "Signal strength, dBm."
+                    },
+                    "frequencyMhz": {
+                        "type": "number"
+                    }
+                }
             },
             "ValidationExceptionField": {
                 "type": "object",

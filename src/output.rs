@@ -23,6 +23,8 @@ pub enum Output {
     Wifi(Value),
     /// GetDeviceLocation's output: `gpsd`, `fix`, `lastFix`, `satellites`, `receivers`...
     Location(Value),
+    /// GetDeviceUplinks' output: `{"uplinks": [...], "reportedAt"}`.
+    Uplinks(Value),
     /// Plain JSON either way (`schema`, `--dry-run`).
     Json(Value),
 }
@@ -41,6 +43,7 @@ impl Output {
                 | Self::Profiles(value)
                 | Self::Wifi(value)
                 | Self::Location(value)
+                | Self::Uplinks(value)
                 | Self::Json(value),
                 true,
             )
@@ -55,6 +58,7 @@ impl Output {
             (Self::Profiles(value), false) => profiles(value),
             (Self::Wifi(value), false) => wifi(value),
             (Self::Location(value), false) => location(value),
+            (Self::Uplinks(value), false) => uplinks(value),
         }
     }
 }
@@ -413,6 +417,103 @@ fn fix_lines(out: &mut String, label: &str, fix: &Value) {
     }
 }
 
+fn uplinks(value: &Value) -> String {
+    let rows = rows(value, "uplinks", |uplink| {
+        let ipv4: Vec<&str> = uplink["ipv4"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .collect();
+        let mut kind = text(&uplink["kind"]);
+        if let Some(ssid) = uplink["wifi"]["ssid"].as_str() {
+            let _ = write!(kind, " ({ssid})");
+        }
+        [
+            text(&uplink["interface"]),
+            kind,
+            text(&uplink["operState"]),
+            if ipv4.is_empty() {
+                "-".into()
+            } else {
+                ipv4.join(" ")
+            },
+            text(&uplink["defaultRouteMetric"]),
+            public_address(uplink),
+            bonding(uplink),
+        ]
+    });
+    reported(
+        table(
+            [
+                "INTERFACE",
+                "KIND",
+                "STATE",
+                "IPV4",
+                "METRIC",
+                "PUBLIC IPV4",
+                "BONDING",
+            ],
+            &rows,
+            "no interfaces",
+        ),
+        value,
+    )
+}
+
+/// The PUBLIC IPV4 cell: the address only when the API returned it, then whether it's shared.
+fn public_address(uplink: &Value) -> String {
+    let check = &uplink["publicIpv4"];
+    if !check.is_object() {
+        return if uplink["sourceRouted"] == true {
+            "not checked yet".into()
+        } else {
+            "-".into()
+        };
+    }
+    let shares: Vec<&str> = check["sharesPublicAddressWith"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect();
+    let mut cell = check["address"].as_str().unwrap_or_default().to_owned();
+    let about = if let Some(error) = check["error"].as_str() {
+        format!("failing: {error}")
+    } else if shares.is_empty() {
+        "own".to_owned()
+    } else {
+        format!("shared with {}", shares.join(", "))
+    };
+    if cell.is_empty() {
+        cell = about;
+    } else {
+        let _ = write!(cell, " ({about})");
+    }
+    cell
+}
+
+/// The BONDING cell: each running bond's use of the uplink.
+fn bonding(uplink: &Value) -> String {
+    let entries: Vec<String> = uplink["bonding"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|entry| {
+            let mut cell = format!("{}: {}", text(&entry["output"]), text(&entry["state"]));
+            if let Some(with) = entry["sharesPublicAddressWith"].as_str() {
+                let _ = write!(cell, " behind {with}");
+            }
+            cell
+        })
+        .collect();
+    if entries.is_empty() {
+        "-".into()
+    } else {
+        entries.join("; ")
+    }
+}
+
 fn device(value: &Value) -> String {
     let device = &value["device"];
     let mut out = String::new();
@@ -493,6 +594,57 @@ mod tests {
         assert!(nothing.ends_with("Receivers  none"), "{nothing}");
         let json = Output::Location(json!({"fix": {"mode": "none"}})).render(true);
         assert!(json.contains("\"mode\": \"none\""), "{json}");
+    }
+
+    #[test]
+    fn summarizes_uplinks() {
+        // Documentation addresses.
+        let value = json!({
+            "uplinks": [
+                {"interface": "enP3p49s0", "kind": "ethernet", "operState": "down",
+                 "ipv4": [], "sourceRouted": false, "bonding": []},
+                {"interface": "enP4p65s0", "kind": "ethernet", "operState": "up",
+                 "ipv4": ["192.168.5.31/24"], "defaultRouteMetric": 100, "sourceRouted": true,
+                 "publicIpv4": {"sharesPublicAddressWith": ["wlP2p33s0"],
+                                "checkedAt": "2026-11-23T16:12:00Z"},
+                 "bonding": [{"output": "bond", "state": "bonded"}]},
+                {"interface": "usb0", "kind": "ethernet", "operState": "up",
+                 "ipv4": ["172.20.10.2/28"], "defaultRouteMetric": 700, "sourceRouted": true,
+                 "bonding": []},
+                {"interface": "wlP2p33s0", "kind": "wifi", "operState": "up",
+                 "ipv4": ["192.168.5.12/24"], "defaultRouteMetric": 600, "sourceRouted": true,
+                 "wifi": {"ssid": "Bench", "signalDbm": -38},
+                 "publicIpv4": {"sharesPublicAddressWith": ["enP4p65s0"]},
+                 "bonding": [{"output": "bond", "state": "standby",
+                              "sharesPublicAddressWith": "enP4p65s0"}]},
+                {"interface": "wwan0", "kind": "cellular", "operState": "up",
+                 "ipv4": ["10.64.12.9/30"], "defaultRouteMetric": 800, "sourceRouted": true,
+                 "publicIpv4": {"sharesPublicAddressWith": [], "error": "timeout"},
+                 "bonding": [{"output": "bond", "state": "bonded"}]},
+            ],
+            "reportedAt": "2026-11-23T16:12:10Z",
+        });
+        assert_eq!(
+            Output::Uplinks(value).render(false),
+            "INTERFACE  KIND          STATE  IPV4             METRIC  PUBLIC IPV4            BONDING\n\
+             enP3p49s0  ethernet      down   -                -       -                      -\n\
+             enP4p65s0  ethernet      up     192.168.5.31/24  100     shared with wlP2p33s0  bond: bonded\n\
+             usb0       ethernet      up     172.20.10.2/28   700     not checked yet        -\n\
+             wlP2p33s0  wifi (Bench)  up     192.168.5.12/24  600     shared with enP4p65s0  bond: standby behind enP4p65s0\n\
+             wwan0      cellular      up     10.64.12.9/30    800     failing: timeout       bond: bonded\n\
+             (reported 2026-11-23T16:12:10Z)"
+        );
+        let shown = Output::Uplinks(json!({"uplinks": [
+            {"interface": "eth0", "kind": "ethernet", "operState": "up", "ipv4": [],
+             "sourceRouted": true, "bonding": [],
+             "publicIpv4": {"address": "203.0.113.7", "sharesPublicAddressWith": []}}]}))
+        .render(false);
+        assert!(shown.contains("203.0.113.7 (own)"), "{shown}");
+        assert!(
+            Output::Uplinks(json!({"uplinks": []}))
+                .render(false)
+                .ends_with("(no interfaces)")
+        );
     }
 
     #[test]

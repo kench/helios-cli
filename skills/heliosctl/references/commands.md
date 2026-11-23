@@ -63,6 +63,18 @@ once the device has applied it (`pending: false`), or fails with exit 4 (a new e
   (`DeviceStateUnavailable`) when the device has never reported GPS. **This is the device's
   exact position.**
 
+## Uplinks
+
+- `heliosctl --json uplinks <device> [--show-public-addresses]`: the device's network
+  interfaces (GetDeviceUplinks), as `uplinks`, each with `interface`, `kind` (`ethernet`,
+  `wifi`, `cellular`, `virtual`, `other`), `operState`, `carrier`, `ipv4`,
+  `defaultRouteMetric` (lower is preferred), `sourceRouted`, `wifi` (`ssid`, `signalDbm`,
+  `frequencyMhz`), `publicIpv4` (`sharesPublicAddressWith`, `checkedAt`, `error`, `failedAt`,
+  and `address` only with `--show-public-addresses`; absent when not checked yet) and
+  `bonding` (per running SRTLA output: `output`, `state` `bonded` or `standby`, and
+  `sharesPublicAddressWith` for standby); plus `reportedAt`. Exit 7 (`DeviceStateUnavailable`)
+  when the device has never reported its interfaces. **Public addresses are personal data.**
+
 ## Wi-Fi
 
 - `heliosctl --json wifi list <device>`: the networks the device joins: `ssid`, `security`

@@ -1,5 +1,5 @@
-//! `heliosctl inputs`, `profiles` and `wifi` (HLD 7.3.4.1): what a device can stream from, its
-//! encoding profiles, and the Wi-Fi networks it joins.
+//! `heliosctl inputs`, `profiles`, `location` and `wifi` (HLD 7.3.4.1): what a device can stream
+//! from, its encoding profiles, where it is, and the Wi-Fi networks it joins.
 //!
 //! A Wi-Fi passphrase is read from a file or stdin, never the command line, and never printed:
 //! the API takes it over TLS and seals it for the device.
@@ -106,6 +106,19 @@ pub async fn profiles(client: &Client, command: &Profiles) -> Result<Output, Fai
         .call(Method::Get, &path(&id, "/profiles"), &[], None, true)
         .await?;
     Ok(Output::Profiles(found))
+}
+
+/// Runs `location`: GetDeviceLocation, the device's GPS fix.
+///
+/// # Errors
+///
+/// The API's [`Failure`].
+pub async fn location(client: &Client, device: &str) -> Result<Output, Failure> {
+    let id = device_id(client, device).await?;
+    let found = client
+        .call(Method::Get, &path(&id, "/location"), &[], None, true)
+        .await?;
+    Ok(Output::Location(found))
 }
 
 /// Whether a `wifi` command is a dry run for a device ID, which needs no API.

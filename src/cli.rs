@@ -57,6 +57,12 @@ pub enum Command {
     /// A device's encoding profiles.
     #[command(subcommand)]
     Profiles(crate::inventory::Profiles),
+    /// Where a device is: its GPS fix (or the last one), satellites and receivers. This is the
+    /// device's exact position: keep it out of logs and anything shared.
+    Location {
+        /// A device ID (d-…) or thing name (t-…).
+        device: String,
+    },
     /// The Wi-Fi networks a device joins: list, set, remove.
     #[command(subcommand)]
     Wifi(crate::inventory::Wifi),
@@ -138,6 +144,9 @@ async fn execute(cli: Cli) -> Result<output::Output, Failure> {
         Command::Inputs(command) => crate::inventory::inputs(&connect(&cli).await?, command).await,
         Command::Profiles(command) => {
             crate::inventory::profiles(&connect(&cli).await?, command).await
+        }
+        Command::Location { device } => {
+            crate::inventory::location(&connect(&cli).await?, device).await
         }
         Command::Wifi(command) => {
             if crate::inventory::offline(command) {

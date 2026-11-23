@@ -21,6 +21,8 @@ pub enum Output {
     Profiles(Value),
     /// `{"networks": [...], "reportedAt"}` (ListWifiNetworks).
     Wifi(Value),
+    /// GetDeviceLocation's output: `gpsd`, `fix`, `lastFix`, `satellites`, `receivers`...
+    Location(Value),
     /// Plain JSON either way (`schema`, `--dry-run`).
     Json(Value),
 }
@@ -38,6 +40,7 @@ impl Output {
                 | Self::Inputs(value)
                 | Self::Profiles(value)
                 | Self::Wifi(value)
+                | Self::Location(value)
                 | Self::Json(value),
                 true,
             )
@@ -51,6 +54,7 @@ impl Output {
             (Self::Inputs(value), false) => inputs(value),
             (Self::Profiles(value), false) => profiles(value),
             (Self::Wifi(value), false) => wifi(value),
+            (Self::Location(value), false) => location(value),
         }
     }
 }
@@ -315,6 +319,100 @@ fn stream(stream: &Value) -> String {
     out.trim_end().to_owned()
 }
 
+fn location(value: &Value) -> String {
+    let mut out = String::new();
+    let _ = writeln!(out, "{:10} {}", "gpsd", text(&value["gpsd"]));
+    let fix = &value["fix"];
+    if fix["mode"] == "none" || fix["mode"].is_null() {
+        let _ = writeln!(out, "{:10} none since {}", "Fix", text(&value["since"]));
+        if value["lastFix"].is_object() {
+            fix_lines(&mut out, "Last fix", &value["lastFix"]);
+        }
+    } else {
+        fix_lines(&mut out, "Fix", fix);
+    }
+    let satellites = &value["satellites"];
+    if satellites.is_object() {
+        let mut line = format!(
+            "{} used of {} visible",
+            text(&satellites["used"]),
+            text(&satellites["visible"])
+        );
+        if let Some(hdop) = satellites["hdop"].as_f64() {
+            let _ = write!(line, ", HDOP {hdop}");
+        }
+        let _ = writeln!(out, "{:10} {line}", "Satellites");
+    }
+    let receivers: Vec<String> = value["receivers"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|receiver| {
+            let mut about: Vec<String> = Vec::new();
+            if let Some(driver) = receiver["driver"].as_str() {
+                about.push(driver.to_owned());
+            }
+            if let Some(port) = receiver["usbPort"].as_str() {
+                about.push(format!("USB {port}"));
+            }
+            if about.is_empty() {
+                text(&receiver["path"])
+            } else {
+                format!("{} ({})", text(&receiver["path"]), about.join(", "))
+            }
+        })
+        .collect();
+    let _ = writeln!(
+        out,
+        "{:10} {}",
+        "Receivers",
+        if receivers.is_empty() {
+            "none".to_owned()
+        } else {
+            receivers.join("; ")
+        }
+    );
+    let configured = &value["configuredReceiver"];
+    if configured["added"] == false {
+        let _ = writeln!(
+            out,
+            "{:10} {} not open in gpsd: {}",
+            "Configured",
+            text(&configured["path"]),
+            text(&configured["error"])
+        );
+    }
+    reported(out.trim_end().to_owned(), value)
+}
+
+/// A fix's lines: mode and time, then the position, altitude and motion it has.
+fn fix_lines(out: &mut String, label: &str, fix: &Value) {
+    let _ = writeln!(
+        out,
+        "{label:10} {} at {}",
+        text(&fix["mode"]),
+        text(&fix["time"])
+    );
+    if let (Some(latitude), Some(longitude)) = (fix["latitude"].as_f64(), fix["longitude"].as_f64())
+    {
+        let mut line = format!("{latitude}, {longitude}");
+        if let Some(error) = fix["horizontalErrorM"].as_f64() {
+            let _ = write!(line, " (±{error} m)");
+        }
+        let _ = writeln!(out, "{:10} {line}", "Position");
+    }
+    if let Some(altitude) = fix["altitudeM"].as_f64() {
+        let _ = writeln!(out, "{:10} {altitude} m", "Altitude");
+    }
+    if let Some(speed) = fix["speedMps"].as_f64() {
+        let mut line = format!("{speed} m/s");
+        if let Some(track) = fix["trackDeg"].as_f64() {
+            let _ = write!(line, ", track {track}°");
+        }
+        let _ = writeln!(out, "{:10} {line}", "Speed");
+    }
+}
+
 fn device(value: &Value) -> String {
     let device = &value["device"];
     let mut out = String::new();
@@ -343,6 +441,59 @@ mod tests {
     use serde_json::json;
 
     use super::*;
+
+    #[test]
+    fn summarizes_a_location() {
+        // Made-up coordinates.
+        let current = Output::Location(json!({
+            "gpsd": "connected",
+            "receivers": [{"path": "/dev/ttyACM0", "driver": "NMEA0183", "usbPort": "3-1.2"}],
+            "fix": {"mode": "3d", "time": "2026-11-22T20:15:30Z", "latitude": 12.345678,
+                    "longitude": -98.765432, "altitudeM": 41.5, "speedMps": 0.12,
+                    "trackDeg": 270.0, "horizontalErrorM": 4.2},
+            "satellites": {"used": 9, "visible": 14, "hdop": 0.9},
+            "since": "2026-11-22T20:10:02Z",
+            "configuredReceiver": {"path": "/dev/ttyACM0", "added": true},
+            "reportedAt": "2026-11-22T20:15:30Z",
+        }))
+        .render(false);
+        assert_eq!(
+            current,
+            "gpsd       connected\n\
+             Fix        3d at 2026-11-22T20:15:30Z\n\
+             Position   12.345678, -98.765432 (±4.2 m)\n\
+             Altitude   41.5 m\n\
+             Speed      0.12 m/s, track 270°\n\
+             Satellites 9 used of 14 visible, HDOP 0.9\n\
+             Receivers  /dev/ttyACM0 (NMEA0183, USB 3-1.2)\n\
+             (reported 2026-11-22T20:15:30Z)"
+        );
+        let lost = Output::Location(json!({
+            "gpsd": "unavailable",
+            "receivers": [{"path": "/dev/ttyUSB0"}],
+            "fix": {"mode": "none"},
+            "lastFix": {"mode": "2d", "time": "2026-11-22T19:00:00Z", "latitude": 12.3,
+                        "longitude": -98.7},
+            "since": "2026-11-22T19:00:05Z",
+            "configuredReceiver": {"path": "/dev/ttyACM0", "added": false, "error": "gpsd: ERROR"},
+        }))
+        .render(false);
+        assert_eq!(
+            lost,
+            "gpsd       unavailable\n\
+             Fix        none since 2026-11-22T19:00:05Z\n\
+             Last fix   2d at 2026-11-22T19:00:00Z\n\
+             Position   12.3, -98.7\n\
+             Receivers  /dev/ttyUSB0\n\
+             Configured /dev/ttyACM0 not open in gpsd: gpsd: ERROR"
+        );
+        let nothing = Output::Location(json!({"gpsd": "connected", "fix": {"mode": "none"},
+                                              "receivers": [], "since": "2026-11-22T19:00:05Z"}))
+        .render(false);
+        assert!(nothing.ends_with("Receivers  none"), "{nothing}");
+        let json = Output::Location(json!({"fix": {"mode": "none"}})).render(true);
+        assert!(json.contains("\"mode\": \"none\""), "{json}");
+    }
 
     #[test]
     fn json_is_the_api_response() {

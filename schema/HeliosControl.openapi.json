@@ -245,6 +245,94 @@
                 }
             }
         },
+        "/v1/control/devices/{deviceId}/location": {
+            "get": {
+                "description": "The device's position, as its gps module last reported it (LLD 10): the current fix, or\nthe last one while there's no fix, with the receivers and satellites behind it.\n\n**This is the device's exact location.** The device reports the full fix by design (the\nowner's choice), so anyone allowed to call the Control API can read where the device is.\nKeep positions out of logs, tickets and anything shared.",
+                "operationId": "GetDeviceLocation",
+                "parameters": [
+                    {
+                        "name": "deviceId",
+                        "in": "path",
+                        "description": "Service-generated device ID: \"d-\" followed by a ULID.",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^d-[0-9A-HJKMNP-TV-Z]{26}$",
+                            "description": "Service-generated device ID: \"d-\" followed by a ULID."
+                        },
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "GetDeviceLocation 200 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GetDeviceLocationResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "ValidationException 400 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationExceptionResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "DeviceNotFound 404 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeviceNotFoundResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "DeviceStateUnavailable 409 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeviceStateUnavailableResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "RateLimited 429 response",
+                        "headers": {
+                            "Retry-After": {
+                                "schema": {
+                                    "type": "number"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RateLimitedResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "InternalError 500 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalErrorResponseContent"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/control/devices/{deviceId}/profiles": {
             "get": {
                 "description": "Lists the encoding profiles defined on the device, which a stream can be switched between.",
@@ -1012,7 +1100,7 @@
         },
         "/v1/control/devices/{deviceId}/wifi/networks": {
             "delete": {
-                "description": "Removes a Wi-Fi network from the device (a net.wifi.remove command). Removing one the\ndevice doesn't have succeeds. The device must be online, as for SetWifiNetwork.",
+                "description": "Removes a Wi-Fi network from the device (an AWS IoT command execution, helios-net-wifi-remove,\nHelios's net.wifi.remove). Removing one the device doesn't have succeeds. The device must be\nonline, as for SetWifiNetwork.",
                 "operationId": "DeleteWifiNetwork",
                 "parameters": [
                     {
@@ -1206,7 +1294,7 @@
                 }
             },
             "put": {
-                "description": "Adds a Wi-Fi network for the device to join, or replaces the one with the same SSID. A\ncommand to the device (net.wifi.set), not a shadow change, because the passphrase is a\nsecret: it's passed through to the device and never stored or logged by the service, and\nthe device keeps it readable only by root. So the device must be online: if it doesn't\nanswer in time, the call fails with DeviceUnreachable and nothing is kept. The device saves\nthe network and applies it to its network configuration (netplan or NetworkManager); its\n`net` shadow then shows whether the Wi-Fi adapter joined. HLD 7.3, LLD 3 section 10.",
+                "description": "Adds a Wi-Fi network for the device to join, or replaces the one with the same SSID. An AWS\nIoT command execution (helios-net-wifi-set, Helios's net.wifi.set), not a shadow change,\nbecause the passphrase is a secret a shadow mustn't hold. AWS keeps command executions, so\nthe service first seals the passphrase to the device's key (HPKE, RFC 9180, to the\n`secrets_key` in its `helios` shadow, bound to the device and the SSID): AWS only ever holds\nciphertext, only that device can open it, and the service never stores or logs the\nplaintext. The device keeps it readable only by root. The device must be online: if it\ndoesn't answer in time, the call fails with DeviceUnreachable and nothing is changed. The\ndevice saves the network and applies it to its network configuration (netplan or\nNetworkManager); its `net` shadow then shows whether the Wi-Fi adapter joined. HLD 7.3,\nLLD 2 section 7.3, LLD 3 section 10.",
                 "operationId": "SetWifiNetwork",
                 "requestBody": {
                     "content": {
@@ -1569,6 +1657,49 @@
                     }
                 }
             },
+            "GetDeviceLocationResponseContent": {
+                "type": "object",
+                "properties": {
+                    "gpsd": {
+                        "$ref": "#/components/schemas/GpsdState"
+                    },
+                    "receivers": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/GpsReceiver"
+                        },
+                        "description": "The GPS receivers gpsd has open."
+                    },
+                    "fix": {
+                        "$ref": "#/components/schemas/GpsFix"
+                    },
+                    "lastFix": {
+                        "$ref": "#/components/schemas/GpsFix"
+                    },
+                    "satellites": {
+                        "$ref": "#/components/schemas/GpsSatellites"
+                    },
+                    "since": {
+                        "type": "string",
+                        "description": "When the fix's mode last changed (for example, when the fix was lost).",
+                        "format": "date-time"
+                    },
+                    "configuredReceiver": {
+                        "$ref": "#/components/schemas/GpsConfiguredReceiver"
+                    },
+                    "reportedAt": {
+                        "type": "string",
+                        "description": "When the device last reported its gps state.",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "fix",
+                    "gpsd",
+                    "receivers",
+                    "since"
+                ]
+            },
             "GetDeviceResponseContent": {
                 "type": "object",
                 "properties": {
@@ -1610,6 +1741,147 @@
                 },
                 "required": [
                     "stream"
+                ]
+            },
+            "GpsConfiguredReceiver": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "The path from the device's config (`[modules.gps] device`)."
+                    },
+                    "added": {
+                        "type": "boolean",
+                        "description": "Whether gpsd has it open."
+                    },
+                    "error": {
+                        "type": "string",
+                        "description": "Why gpsd didn't take it."
+                    }
+                },
+                "required": [
+                    "added",
+                    "path"
+                ]
+            },
+            "GpsFix": {
+                "type": "object",
+                "description": "A fix. Every member but `mode` is absent when the mode is none, and any the receiver didn't\nreport is absent too.",
+                "properties": {
+                    "mode": {
+                        "$ref": "#/components/schemas/GpsFixMode"
+                    },
+                    "time": {
+                        "type": "string",
+                        "description": "The fix's time, from the satellites (UTC).",
+                        "format": "date-time"
+                    },
+                    "latitude": {
+                        "type": "number",
+                        "description": "Degrees north (WGS 84).",
+                        "format": "double"
+                    },
+                    "longitude": {
+                        "type": "number",
+                        "description": "Degrees east (WGS 84).",
+                        "format": "double"
+                    },
+                    "altitudeM": {
+                        "type": "number",
+                        "description": "Altitude above mean sea level, metres (3d fixes).",
+                        "format": "double"
+                    },
+                    "speedMps": {
+                        "type": "number",
+                        "description": "Speed over ground, metres per second.",
+                        "format": "double"
+                    },
+                    "trackDeg": {
+                        "type": "number",
+                        "description": "Course over ground, degrees from true north.",
+                        "format": "double"
+                    },
+                    "climbMps": {
+                        "type": "number",
+                        "description": "Vertical speed, metres per second (up is positive).",
+                        "format": "double"
+                    },
+                    "horizontalErrorM": {
+                        "type": "number",
+                        "description": "Estimated horizontal error, metres (gpsd's eph, about 95% confidence).",
+                        "format": "double"
+                    },
+                    "verticalErrorM": {
+                        "type": "number",
+                        "description": "Estimated vertical error, metres (gpsd's epv).",
+                        "format": "double"
+                    }
+                },
+                "required": [
+                    "mode"
+                ]
+            },
+            "GpsFixMode": {
+                "type": "string",
+                "enum": [
+                    "none",
+                    "2d",
+                    "3d"
+                ]
+            },
+            "GpsReceiver": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "The receiver's device path on the device, for example /dev/ttyACM0."
+                    },
+                    "driver": {
+                        "type": "string",
+                        "description": "gpsd's driver for it, for example NMEA0183."
+                    },
+                    "bps": {
+                        "type": "number",
+                        "description": "Its serial speed, bits per second."
+                    },
+                    "usbPort": {
+                        "type": "string",
+                        "pattern": "^[0-9]+-[0-9]+(\\.[0-9]+)*$",
+                        "description": "Its USB port, for example 1-1.3, when it's on USB."
+                    }
+                },
+                "required": [
+                    "path"
+                ]
+            },
+            "GpsSatellites": {
+                "type": "object",
+                "properties": {
+                    "used": {
+                        "type": "number",
+                        "description": "Satellites used in the fix."
+                    },
+                    "visible": {
+                        "type": "number",
+                        "description": "Satellites the receiver can see."
+                    },
+                    "hdop": {
+                        "type": "number",
+                        "description": "Horizontal dilution of precision.",
+                        "format": "double"
+                    },
+                    "pdop": {
+                        "type": "number",
+                        "description": "Position dilution of precision.",
+                        "format": "double"
+                    }
+                }
+            },
+            "GpsdState": {
+                "type": "string",
+                "enum": [
+                    "connected",
+                    "unavailable"
                 ]
             },
             "Input": {
@@ -2427,14 +2699,14 @@
             },
             "WifiNetworkRefusedResponseContent": {
                 "type": "object",
-                "description": "The device refused the Wi-Fi change: it has no Wi-Fi adapter, already has the most networks\nit keeps (16), or found the SSID or passphrase invalid.",
+                "description": "The device refused the Wi-Fi change: it has no Wi-Fi adapter, already has the most networks\nit keeps (16), found the SSID or passphrase invalid, couldn't open the sealed passphrase, or\ncan't take it at all (no key to seal to, or a Helios without Wi-Fi commands).",
                 "properties": {
                     "message": {
                         "type": "string"
                     },
                     "reason": {
                         "type": "string",
-                        "description": "no_adapter, too_many, invalid_ssid, invalid_passphrase or apply_failed."
+                        "description": "no_adapter, too_many, invalid_ssid, invalid_passphrase, secret_unreadable (the device\ncouldn't open the sealed passphrase), no_secrets_key (the device reports no key to seal\nit to; nothing was sent), unsupported (its Helios has no Wi-Fi commands) or apply_failed."
                     }
                 }
             },

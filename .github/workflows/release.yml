@@ -116,6 +116,7 @@ jobs:
           mkdir "$name"
           cp "target/$TARGET/release/heliosctl" README.md LICENSE "$name/"
           cp -R man "$name/man"
+          cp -R skills "$name/skills"
           tar -czf "$name.tar.gz" "$name"
 
       - name: Upload
@@ -132,14 +133,23 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          path: source
+
       - name: Download
         uses: actions/download-artifact@v7
         with:
           pattern: heliosctl-*
           merge-multiple: true
 
+      # The agent skill as Claude and ChatGPT take it: a zip holding the heliosctl/ folder.
+      - name: Package the agent skill
+        run: (cd source/skills && zip -qr "$GITHUB_WORKSPACE/heliosctl-skill.zip" heliosctl)
+
       - name: Checksums
-        run: sha256sum heliosctl-*.tar.gz | tee SHA256SUMS
+        run: sha256sum heliosctl-*.tar.gz heliosctl-skill.zip | tee SHA256SUMS
 
       - name: Create the release
         env:
@@ -147,4 +157,4 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag \
             --title "heliosctl ${{ needs.check.outputs.version }}" --generate-notes \
-            heliosctl-*.tar.gz SHA256SUMS
+            heliosctl-*.tar.gz heliosctl-skill.zip SHA256SUMS

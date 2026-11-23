@@ -116,6 +116,26 @@ source_profile = helios-login
 region = us-west-2
 ```
 
+## Agent skill
+
+`skills/heliosctl/` is an [Agent Skills](https://agentskills.io/specification) skill (`SKILL.md`
+with `name` and `description`, plus `references/`), the format both Claude and ChatGPT/Codex
+read. It teaches an agent to run heliosctl safely: always `--json`, read before changing,
+`--dry-run` first, client tokens and `--wait` for stream changes, ask before anything that takes a
+stream off air or a device off its network, and never put a passphrase in an argument. Each
+release has it as `heliosctl-skill.zip`, and in every tarball under `skills/`.
+
+- **Claude Code**: copy `skills/heliosctl` to `~/.claude/skills/heliosctl` (or a project's
+  `.claude/skills/`), where heliosctl and the AWS credentials are.
+- **Claude on the web**: the skill uploads (`heliosctl-skill.zip`), but claude.ai runs skills in its
+  sandbox, which has no heliosctl, no AWS credentials and limited network access. That needs the
+  Control API's MCP connector (board task "Control API MCP connector for Claude on the web"); the
+  skill will then use its tools.
+- **ChatGPT / Codex**: the same folder; install it as their skills documentation describes.
+
+`tests/skill.rs` checks the format, the links, and that every command and flag the skill names
+exists and parses, so a change to the CLI that breaks the skill fails CI.
+
 ## Manual pages
 
 `man/` holds `heliosctl(1)` and a page per subcommand (`heliosctl-streams-start(1)`, ...), generated

@@ -1,0 +1,69 @@
+# heliosctl commands
+
+Every command takes `--json` (always use it), and the settings `--endpoint` (or
+`HELIOS_CONTROL_URL`), `--profile` (the AWS profile, default `helios-operator`, or
+`AWS_PROFILE`) and `--region`. `<device>` is a thing name (`t-…`) or a device ID (`d-…`).
+`heliosctl <command> --help` and `man heliosctl-<command>` say the same as this page.
+
+## Devices
+
+- `heliosctl --json devices list`: every device: `deviceId`, `thingName`, `role`, `status`,
+  `heliosVersion`.
+- `heliosctl --json devices get <device>`: one device, and its modules' states
+  (`modules: {"net": "running", ...}`).
+
+## Streams
+
+Reads:
+
+- `heliosctl --json streams list <device>`: every stream, each with `desired`, `reported`,
+  `pending` and `rejected`.
+- `heliosctl --json streams get <device> <stream>`: one stream.
+
+Changes (each takes `--dry-run`, `--wait`, `--timeout <seconds>` (default 60) and
+`--client-token <token>`):
+
+- `heliosctl --json streams start <device> <stream>`: desired state live.
+- `heliosctl --json streams stop <device> <stream>`: desired state stopped.
+- `heliosctl --json streams update <device> <stream> [--source <source>]
+  [--encoding-profile <name>] [--bitrate <kbps>|default] [--source-ceiling-percent <0-400>]`:
+  - `--source`: `camera:<video>[,audio=<device>]` (the video is `usb:<port>`, such as
+    `usb:1-1.3`, or `<vid>:<pid>:<serial>`, as `inputs list` shows), `rtmp:<key>` (`ingest`,
+    `ingest-2`, ...), or `test[:<width>x<height>][@<fps>]`.
+  - `--encoding-profile`: a profile from `profiles list`. (`--profile` is the AWS profile.)
+  - `--bitrate`: kbit/s, 100 to 100000, within the profile's range; `default` for the
+    profile's own.
+  - `--source-ceiling-percent`: adaptive RTMP streams: the bitrate ceiling as a percentage of
+    the camera's.
+- `heliosctl --json streams set-destination <device> <stream> --url <url>` or
+  `--url-file <file|->`: an `srt://` or `srtla://` URL, `host:port`, with only `streamid`,
+  `latency` (20 to 30000 ms) and `passphrase` (10 to 79 characters) parameters. A URL with a
+  passphrase must use `--url-file`.
+
+A stream change returns `{"stream": {...}, "shadowVersion": n}` at once; with `--wait` it returns
+once the device has applied it (`pending: false`), or fails with exit 4 (a new entry in
+`rejected`) or 5 (time ran out).
+
+## Inputs and profiles
+
+- `heliosctl --json inputs list <device>`: cameras (`selector`, `port`, `product`,
+  `hasAudio`), audio devices, RTMP ingest keys (and whether something is publishing), test
+  patterns.
+- `heliosctl --json profiles list <device>`: encoding profiles: `name`, `video` (encoder),
+  `encoder`, `bitrateMode`, `bitrateKbps`, `minBitrateKbps`, `maxBitrateKbps`, `audio`.
+
+## Wi-Fi
+
+- `heliosctl --json wifi list <device>`: the networks the device joins: `ssid`, `security`
+  (`personal` or `open`), `hidden`. Never passphrases.
+- `heliosctl --json wifi set <device> --ssid <ssid> --passphrase-file <file|->`, or `--open`
+  for an open network; `--hidden` if it doesn't broadcast its SSID; `--dry-run` (shows the
+  passphrase as `***`). The device applies it before the command returns.
+- `heliosctl --json wifi remove <device> --ssid <ssid>`, with `--dry-run`. Returns
+  `{"removed": true|false}`.
+
+## Schema
+
+- `heliosctl schema`: the Control API's OpenAPI description.
+- `heliosctl schema <Operation>`: one operation's method, path, input and output, such as
+  `heliosctl schema SetStreamDestination`.

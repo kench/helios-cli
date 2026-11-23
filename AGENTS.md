@@ -19,6 +19,8 @@ contract/       git submodule: helios-contract, pinned to the tag the schema cam
 tests/          the binary end to end against a local server; manpages.rs checks man/
 examples/manpages.rs  generates man/ from the clap definitions (cargo run --example manpages)
 man/            the generated manual pages (checked in; never edit by hand)
+skills/heliosctl/  the agent skill (Agent Skills format: SKILL.md + references/); tests/skill.rs
+                checks it against the CLI. Update it with any change to commands or flags
 ```
 
 ## Rules

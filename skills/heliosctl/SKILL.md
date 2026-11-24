@@ -61,6 +61,9 @@ order below, and ask the user before anything disruptive.
 - Never print, log or repeat a passphrase, PIN or AWS key.
 - `location` returns the device's exact position. Answer the user directly when they ask where
   it is, but don't copy coordinates into notes, issues, commits, logs or anything shared.
+- Public IP addresses are personal data too. Use `uplinks` without `--show-public-addresses`
+  unless the user asks for the address; `sharesPublicAddressWith` answers "do these uplinks share
+  a connection?" without it.
 
 ## Exit codes
 
@@ -98,6 +101,9 @@ Common tasks:
   (dry run first; `--url-file -` if it has a passphrase).
 - Where is it: `heliosctl --json location <device>`. With no current fix, say so and give
   `lastFix` with its time (how old it is), not as if it were current.
+- Which connections is it using: `heliosctl --json uplinks <device>`. Each uplink's `bonding`
+  says whether a running bond has it `bonded` or in `standby` (and behind which uplink);
+  `publicIpv4.sharesPublicAddressWith` lists uplinks on the same connection.
 - Add a Wi-Fi network: ask the user to run
   `heliosctl --json wifi set <device> --ssid <ssid> --passphrase-file -` themselves with the
   passphrase on stdin, unless they've given you a file holding it.

@@ -125,3 +125,30 @@ fn people_get_a_message_on_stderr() {
     assert!(out.is_empty());
     assert!(err.starts_with("heliosctl: endpoint"), "{err}");
 }
+
+#[test]
+fn asks_for_public_addresses_only_with_the_flag() {
+    let body = r#"{"uplinks": [{"interface": "eth0", "kind": "ethernet", "operState": "up", "ipv4": [], "sourceRouted": true, "bonding": []}]}"#;
+    let (endpoint, received) = serve_once(200, None, body);
+    let (code, out, err) = heliosctl(&endpoint, &["--json", "uplinks", "d-1"]);
+    assert_eq!(code, 0, "{err}");
+    let document: serde_json::Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(document["uplinks"][0]["interface"], "eth0");
+    let head = received.recv().unwrap();
+    assert!(
+        head.starts_with("GET /dev/v1/control/devices/d-1/uplinks "),
+        "{head}"
+    );
+
+    let (endpoint, received) = serve_once(200, None, body);
+    let (code, _, err) = heliosctl(
+        &endpoint,
+        &["--json", "uplinks", "d-1", "--show-public-addresses"],
+    );
+    assert_eq!(code, 0, "{err}");
+    let head = received.recv().unwrap();
+    assert!(
+        head.starts_with("GET /dev/v1/control/devices/d-1/uplinks?includePublicAddresses=true "),
+        "{head}"
+    );
+}

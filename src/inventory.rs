@@ -1,5 +1,6 @@
-//! `heliosctl inputs`, `profiles`, `location` and `wifi` (HLD 7.3.4.1): what a device can stream
-//! from, its encoding profiles, where it is, and the Wi-Fi networks it joins.
+//! `heliosctl inputs`, `profiles`, `location`, `uplinks` and `wifi` (HLD 7.3.4.1): what a device
+//! can stream from, its encoding profiles, where it is, its network interfaces, and the Wi-Fi
+//! networks it joins.
 //!
 //! A Wi-Fi passphrase is read from a file or stdin, never the command line, and never printed:
 //! the API takes it over TLS and seals it for the device.
@@ -119,6 +120,29 @@ pub async fn location(client: &Client, device: &str) -> Result<Output, Failure> 
         .call(Method::Get, &path(&id, "/location"), &[], None, true)
         .await?;
     Ok(Output::Location(found))
+}
+
+/// Runs `uplinks`: GetDeviceUplinks, the device's interfaces and bonding. Public addresses only
+/// with `public_addresses`.
+///
+/// # Errors
+///
+/// The API's [`Failure`].
+pub async fn uplinks(
+    client: &Client,
+    device: &str,
+    public_addresses: bool,
+) -> Result<Output, Failure> {
+    let id = device_id(client, device).await?;
+    let query: &[(&str, &str)] = if public_addresses {
+        &[("includePublicAddresses", "true")]
+    } else {
+        &[]
+    };
+    let found = client
+        .call(Method::Get, &path(&id, "/uplinks"), query, None, true)
+        .await?;
+    Ok(Output::Uplinks(found))
 }
 
 /// Whether a `wifi` command is a dry run for a device ID, which needs no API.

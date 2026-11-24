@@ -63,6 +63,16 @@ pub enum Command {
         /// A device ID (d-…) or thing name (t-…).
         device: String,
     },
+    /// A device's network interfaces: addresses, routes, its public address checks, and which
+    /// uplinks its SRTLA bonds use or hold in standby.
+    Uplinks {
+        /// A device ID (d-…) or thing name (t-…).
+        device: String,
+        /// Also show each uplink's public IPv4 address. Off by default: it's personal data (it
+        /// locates the connection), so keep it out of logs and anything shared.
+        #[arg(long)]
+        show_public_addresses: bool,
+    },
     /// The Wi-Fi networks a device joins: list, set, remove.
     #[command(subcommand)]
     Wifi(crate::inventory::Wifi),
@@ -148,6 +158,10 @@ async fn execute(cli: Cli) -> Result<output::Output, Failure> {
         Command::Location { device } => {
             crate::inventory::location(&connect(&cli).await?, device).await
         }
+        Command::Uplinks {
+            device,
+            show_public_addresses,
+        } => crate::inventory::uplinks(&connect(&cli).await?, device, *show_public_addresses).await,
         Command::Wifi(command) => {
             if crate::inventory::offline(command) {
                 return crate::inventory::wifi(None, command).await;

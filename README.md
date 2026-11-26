@@ -69,7 +69,7 @@ x86_64 and arm64 (glibc 2.31 or newer: Debian 11, Ubuntu 22.04) and macOS on App
 repository is private, so download with `gh`:
 
 ```sh
-version=v0.3.0 target=x86_64-unknown-linux-gnu   # or aarch64-unknown-linux-gnu, aarch64-apple-darwin
+version=v0.4.0 target=x86_64-unknown-linux-gnu   # or aarch64-unknown-linux-gnu, aarch64-apple-darwin
 gh release download "$version" -R kench/helios-cli -p "heliosctl-*-$target.tar.gz" -p SHA256SUMS
 sha256sum --ignore-missing -c SHA256SUMS          # macOS: shasum -a 256 --ignore-missing -c SHA256SUMS
 tar -xzf heliosctl-*-"$target".tar.gz

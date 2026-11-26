@@ -189,6 +189,7 @@ async fn update_needs_something_valid_to_change() {
             encoding_profile: None,
             bitrate: bitrate.map(str::to_owned),
             source_ceiling_percent: percent,
+            record: None,
         };
     assert_eq!(
         run(None, &update(None, None, None))
@@ -228,11 +229,13 @@ async fn update_needs_something_valid_to_change() {
         encoding_profile: Some("hd-30".into()),
         bitrate: None,
         source_ceiling_percent: None,
+        record: Some("off".into()),
     };
     let Output::Json(printed) = run(None, &profiled).await.unwrap() else {
         panic!("not JSON");
     };
     assert_eq!(printed["request"]["body"]["profile"], "hd-30");
+    assert_eq!(printed["request"]["body"]["record"], false);
     assert_eq!(
         printed["request"]["body"]["clientToken"]
             .as_str()

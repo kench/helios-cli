@@ -17,7 +17,10 @@ Every command takes `--json` (always use it), and the settings `--endpoint` (or
 Reads:
 
 - `heliosctl --json streams list <device>`: every stream, each with `desired`, `reported`,
-  `pending` and `rejected`.
+  `pending` and `rejected`; and `recording`, the device's recordings disk (`dir`, `mounted`,
+  `full`, `totalBytes`, `freeBytes`, `segments`, `oldest`), if it reports one. Recordings are
+  MPEG-TS segments on the device at `<dir>/<stream>/<run start>-<n>.ts`, fetched over SSH;
+  the oldest are deleted when the disk fills.
 - `heliosctl --json streams get <device> <stream>`: one stream.
 
 Changes (each takes `--dry-run`, `--wait`, `--timeout <seconds>` (default 60) and
@@ -26,7 +29,8 @@ Changes (each takes `--dry-run`, `--wait`, `--timeout <seconds>` (default 60) an
 - `heliosctl --json streams start <device> <stream>`: desired state live.
 - `heliosctl --json streams stop <device> <stream>`: desired state stopped.
 - `heliosctl --json streams update <device> <stream> [--source <source>]
-  [--encoding-profile <name>] [--bitrate <kbps>|default] [--source-ceiling-percent <0-400>]`:
+  [--encoding-profile <name>] [--bitrate <kbps>|default] [--source-ceiling-percent <0-400>]
+  [--record on|off]`:
   - `--source`: `camera:<video>[,audio=<device>]` (the video is `usb:<port>`, such as
     `usb:1-1.3`, or `<vid>:<pid>:<serial>`, as `inputs list` shows), `rtmp:<key>` (`ingest`,
     `ingest-2`, ...), or `test[:<width>x<height>][@<fps>]`.
@@ -35,6 +39,11 @@ Changes (each takes `--dry-run`, `--wait`, `--timeout <seconds>` (default 60) an
     profile's own.
   - `--source-ceiling-percent`: adaptive RTMP streams: the bitrate ceiling as a percentage of
     the camera's.
+  - `--record`: record the stream on the device as sent (`on`) or not (`off`). Switching
+    restarts the stream's encoder, a few seconds' gap in the stream; ask before switching a
+    live stream. The stream's `reported.recording.state` then says `recording`, `idle` (set to
+    record, not running), `unavailable` (no recordings disk mounted), `disk_full` or `error`;
+    `off` when it isn't set to record.
 - `heliosctl --json streams set-destination <device> <stream> --url <url>` or
   `--url-file <file|->`: an `srt://` or `srtla://` URL, `host:port`, with only `streamid`,
   `latency` (20 to 30000 ms) and `passphrase` (10 to 79 characters) parameters. A URL with a

@@ -2,11 +2,11 @@
 .el .ds Aq '
 .TH heliosctl-streams-update 1 0.3.0 "heliosctl 0.3.0" "Helios Manual"
 .SH NAME
-heliosctl\-streams\-update \- Change a stream\*(Aqs source, profile, bitrate or source ceiling
+heliosctl\-streams\-update \- Change a stream\*(Aqs source, profile, bitrate, source ceiling or recording
 .SH SYNOPSIS
-\fBheliosctl streams update\fR [\fB\-\-dry\-run\fR] [\fB\-\-json\fR] [\fB\-\-endpoint\fR] [\fB\-\-wait\fR] [\fB\-\-profile\fR] [\fB\-\-timeout\fR] [\fB\-\-client\-token\fR] [\fB\-\-region\fR] [\fB\-\-source\fR] [\fB\-\-encoding\-profile\fR] [\fB\-\-bitrate\fR] [\fB\-\-source\-ceiling\-percent\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIDEVICE\fR> <\fISTREAM\fR> 
+\fBheliosctl streams update\fR [\fB\-\-dry\-run\fR] [\fB\-\-json\fR] [\fB\-\-endpoint\fR] [\fB\-\-wait\fR] [\fB\-\-profile\fR] [\fB\-\-timeout\fR] [\fB\-\-client\-token\fR] [\fB\-\-region\fR] [\fB\-\-source\fR] [\fB\-\-encoding\-profile\fR] [\fB\-\-bitrate\fR] [\fB\-\-source\-ceiling\-percent\fR] [\fB\-\-record\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIDEVICE\fR> <\fISTREAM\fR> 
 .SH DESCRIPTION
-Change a stream\*(Aqs source, profile, bitrate or source ceiling
+Change a stream\*(Aqs source, profile, bitrate, source ceiling or recording
 .SH OPTIONS
 .TP
 \fB\-\-dry\-run\fR
@@ -44,6 +44,19 @@ A bitrate override in kbit/s (100–100000), or `default` for the profile\*(Aqs
 .TP
 \fB\-\-source\-ceiling\-percent\fR \fI<SOURCE_CEILING_PERCENT>\fR
 Adaptive RTMP streams: the ceiling as a percentage of the camera\*(Aqs bitrate (0–400)
+.TP
+\fB\-\-record\fR \fI<RECORD>\fR
+Record the stream on the device as sent (on) or not (off). Switching restarts the stream\*(Aqs encoder: a few seconds\*(Aq gap
+.br
+
+.br
+\fIPossible values:\fR
+.RS 14
+.IP \(bu 2
+on
+.IP \(bu 2
+off
+.RE
 .TP
 \fB\-h\fR, \fB\-\-help\fR
 Print help

@@ -248,7 +248,7 @@ fn wifi(value: &Value) -> String {
 }
 
 fn streams(value: &Value) -> String {
-    let rows: Vec<[String; 6]> = value["streams"]
+    let rows: Vec<[String; 7]> = value["streams"]
         .as_array()
         .into_iter()
         .flatten()
@@ -265,14 +265,57 @@ fn streams(value: &Value) -> String {
                 .into(),
                 source(&stream["reported"]["source"]),
                 text(&stream["reported"]["bitrateKbps"]),
+                text(&stream["reported"]["recording"]["state"]),
             ]
         })
         .collect();
-    table(
-        ["STREAM", "DESIRED", "REPORTED", "PENDING", "SOURCE", "KBPS"],
+    let out = table(
+        [
+            "STREAM",
+            "DESIRED",
+            "REPORTED",
+            "PENDING",
+            "SOURCE",
+            "KBPS",
+            "RECORDING",
+        ],
         &rows,
         "no streams",
-    )
+    );
+    match storage(&value["recording"]) {
+        Some(storage) => format!("{out}\n\nRecordings: {storage}"),
+        None => out,
+    }
+}
+
+/// The device's recordings storage in one line, if it reports one.
+fn storage(value: &Value) -> Option<String> {
+    let dir = value["dir"].as_str()?;
+    if value["mounted"] != true {
+        return Some(format!("{dir} not mounted (not recording)"));
+    }
+    let mut line = dir.to_owned();
+    if let (Some(free), Some(total)) = (value["freeBytes"].as_u64(), value["totalBytes"].as_u64()) {
+        let _ = write!(line, ", {} free of {}", gigabytes(free), gigabytes(total));
+    }
+    if let Some(segments) = value["segments"].as_u64() {
+        let _ = write!(line, ", {segments} segments");
+    }
+    if let Some(oldest) = value["oldest"].as_str() {
+        let _ = write!(line, " since {oldest}");
+    }
+    if value["full"] == true {
+        line.push_str(", FULL");
+    }
+    if let Some(error) = value["lastError"].as_str() {
+        let _ = write!(line, " ({error})");
+    }
+    Some(line)
+}
+
+#[allow(clippy::cast_precision_loss)] // bytes to a rounded figure for people
+fn gigabytes(bytes: u64) -> String {
+    format!("{:.1} GB", bytes as f64 / 1e9)
 }
 
 fn stream(stream: &Value) -> String {
@@ -306,6 +349,26 @@ fn stream(stream: &Value) -> String {
         "Bitrate",
         format!("{} kbit/s", text(&reported["bitrateKbps"])),
     );
+    let recording = &reported["recording"];
+    if recording.is_object() || desired["record"].is_boolean() {
+        let mut about = text(&recording["state"]);
+        if let Some(want) = desired["record"].as_bool() {
+            let _ = write!(about, " (desired {})", if want { "on" } else { "off" });
+        }
+        if let Some(since) = recording["since"].as_str() {
+            let _ = write!(about, " since {since}");
+        }
+        if let Some(files) = recording["files"].as_str() {
+            let _ = write!(about, ", files {files}");
+        }
+        if let Some(segment) = recording["segment"].as_str() {
+            let _ = write!(about, ", newest {segment}");
+        }
+        if let Some(error) = recording["lastError"].as_str() {
+            let _ = write!(about, " ({error})");
+        }
+        line("Recording", about);
+    }
     if let Some(error) = reported["lastError"].as_str() {
         line("Last error", error.to_owned());
     }
@@ -693,10 +756,40 @@ mod tests {
             "desired": {"state": "live"},
             "reported": {"state": "starting", "source": {"camera": {"video": "usb:1-1"}},
                          "profile": "hd", "destination": "srt://h:1", "bitrateKbps": 4500,
-                         "lastError": "no signal"},
+                         "lastError": "no signal",
+                         "recording": {"state": "recording", "since": "2026-11-26T10:15:00Z",
+                                       "files": "main/20261126T101500Z-*.ts",
+                                       "segment": "20261126T101500Z-00003.ts"}},
             "rejected": [{"setting": "source", "reason": "busy", "at": "2026-11-22T00:00:00Z"}],
         });
-        let table = Output::Streams(json!({"streams": [stream, {"streamId": "b"}]})).render(false);
+        let table = Output::Streams(json!({
+            "streams": [stream, {"streamId": "b"}],
+            "recording": {"dir": "/rec", "mounted": true, "full": true, "totalBytes": 125_371_473_920_u64,
+                          "freeBytes": 118_000_000_000_u64, "segments": 4,
+                          "oldest": "2026-11-26T10:25:00Z", "lastError": "slow"},
+        }))
+        .render(false);
+        assert!(
+            table.ends_with(
+                "Recordings: /rec, 118.0 GB free of 125.4 GB, 4 segments since \
+                 2026-11-26T10:25:00Z, FULL (slow)"
+            ),
+            "{table}"
+        );
+        assert!(
+            table
+                .lines()
+                .nth(1)
+                .is_some_and(|l| l.ends_with("recording")),
+            "{table}"
+        );
+        let unmounted =
+            Output::Streams(json!({"streams": [], "recording": {"dir": "/rec", "mounted": false}}))
+                .render(false);
+        assert!(
+            unmounted.ends_with("Recordings: /rec not mounted (not recording)"),
+            "{unmounted}"
+        );
         let lines: Vec<&str> = table.lines().collect();
         assert!(lines[0].starts_with("STREAM"), "{table}");
         assert!(
@@ -720,9 +813,19 @@ mod tests {
             "Bitrate      4500 kbit/s",
             "Last error   no signal",
             "Rejected     source: busy (2026-11-22T00:00:00Z)",
+            "Recording    recording since 2026-11-26T10:15:00Z, files main/20261126T101500Z-*.ts, \
+             newest 20261126T101500Z-00003.ts",
         ] {
             assert!(summary.contains(line), "{line}\n{summary}");
         }
+        let mut off = stream.clone();
+        off["desired"]["record"] = json!(false);
+        off["reported"]["recording"] = json!({"state": "error", "lastError": "no disk"});
+        let summary = Output::Stream(json!({"stream": off})).render(false);
+        assert!(
+            summary.contains("Recording    error (desired off) (no disk)"),
+            "{summary}"
+        );
     }
 
     #[test]

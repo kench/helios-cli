@@ -1660,7 +1660,6 @@
                 "type": "string",
                 "enum": [
                     "scanner",
-                    "relay",
                     "transcoder"
                 ]
             },
@@ -2121,6 +2120,9 @@
                         "items": {
                             "$ref": "#/components/schemas/StreamDescription"
                         }
+                    },
+                    "recording": {
+                        "$ref": "#/components/schemas/RecordingStorage"
                     }
                 },
                 "required": [
@@ -2256,12 +2258,62 @@
                     }
                 }
             },
+            "RecordingState": {
+                "type": "string",
+                "enum": [
+                    "off",
+                    "idle",
+                    "recording",
+                    "unavailable",
+                    "disk_full",
+                    "error"
+                ]
+            },
+            "RecordingStorage": {
+                "type": "object",
+                "description": "Where the device keeps recordings. The oldest closed segments are deleted when it fills.",
+                "properties": {
+                    "dir": {
+                        "type": "string"
+                    },
+                    "mounted": {
+                        "type": "boolean",
+                        "description": "Whether `dir` is a mounted filesystem; recording needs it."
+                    },
+                    "full": {
+                        "type": "boolean",
+                        "description": "Above its limit with nothing left to delete."
+                    },
+                    "totalBytes": {
+                        "type": "number"
+                    },
+                    "freeBytes": {
+                        "type": "number"
+                    },
+                    "segments": {
+                        "type": "number"
+                    },
+                    "oldest": {
+                        "type": "string",
+                        "description": "Timestamp serialized as an RFC 3339 string in UTC.",
+                        "format": "date-time"
+                    },
+                    "lastError": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "dir",
+                    "full",
+                    "mounted"
+                ]
+            },
             "RejectedSetting": {
                 "type": "object",
                 "properties": {
                     "setting": {
                         "type": "string",
-                        "description": "The desired member the device refused: source, profile, destination, bitrate,\nsourceCeilingPercent."
+                        "description": "The desired member the device refused: source, profile, destination, bitrate,\nsourceCeilingPercent, record."
                     },
                     "reason": {
                         "type": "string"
@@ -2600,6 +2652,10 @@
                         "maximum": 400,
                         "minimum": 0,
                         "description": "Adaptive RTMP streams: the ceiling follows the camera's bitrate times this percentage; 0\nkeeps the stream's bitrate as the ceiling."
+                    },
+                    "record": {
+                        "type": "boolean",
+                        "description": "Set only if changed through this API; else the stream's configured `record` applies."
                     }
                 },
                 "required": [
@@ -2614,6 +2670,34 @@
                         "type": "string"
                     }
                 }
+            },
+            "StreamRecording": {
+                "type": "object",
+                "description": "A stream's local recording (LLD 4, section 16): MPEG-TS segments at\n`<dir>/<stream>/<run start>-<n>.ts` on the device.",
+                "properties": {
+                    "state": {
+                        "$ref": "#/components/schemas/RecordingState"
+                    },
+                    "files": {
+                        "type": "string",
+                        "description": "This encoder run's files, relative to the storage's `dir`, such as\n`pocket/20261126T101500Z-*.ts`."
+                    },
+                    "segment": {
+                        "type": "string",
+                        "description": "The newest segment's file name, as of the device's last check (every minute)."
+                    },
+                    "since": {
+                        "type": "string",
+                        "description": "When this run's recording began.",
+                        "format": "date-time"
+                    },
+                    "lastError": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "state"
+                ]
             },
             "StreamReported": {
                 "type": "object",
@@ -2667,6 +2751,9 @@
                     },
                     "lastError": {
                         "type": "string"
+                    },
+                    "recording": {
+                        "$ref": "#/components/schemas/StreamRecording"
                     }
                 },
                 "required": [
@@ -2733,6 +2820,10 @@
                         "maximum": 400,
                         "minimum": 0,
                         "description": "Adaptive RTMP streams: the ceiling follows the camera's bitrate times this percentage; 0\nkeeps the stream's bitrate as the ceiling."
+                    },
+                    "record": {
+                        "type": "boolean",
+                        "description": "Records the stream on the device as sent (LLD 4, section 16). Switching it restarts\nthe stream's encoder, a few seconds' gap."
                     },
                     "clientToken": {
                         "type": "string",

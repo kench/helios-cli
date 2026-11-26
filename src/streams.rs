@@ -36,7 +36,7 @@ pub enum Streams {
     Start(Target),
     /// Stop a stream (desired state stopped).
     Stop(Target),
-    /// Change a stream's source, profile, bitrate or source ceiling.
+    /// Change a stream's source, profile, bitrate, source ceiling or recording.
     Update {
         /// The stream, and how to make the change.
         #[command(flatten)]
@@ -53,6 +53,10 @@ pub enum Streams {
         /// Adaptive RTMP streams: the ceiling as a percentage of the camera's bitrate (0–400).
         #[arg(long)]
         source_ceiling_percent: Option<u16>,
+        /// Record the stream on the device as sent (on) or not (off). Switching restarts the
+        /// stream's encoder: a few seconds' gap.
+        #[arg(long, value_parser = ["on", "off"])]
+        record: Option<String>,
     },
     /// Set where a stream goes: an srt:// or srtla:// URL.
     ///
@@ -131,6 +135,7 @@ pub async fn run(client: Option<&Client>, command: &Streams) -> Result<Output, F
             encoding_profile,
             bitrate,
             source_ceiling_percent,
+            record,
         } => {
             let mut body = serde_json::Map::new();
             if let Some(source) = source {
@@ -151,10 +156,13 @@ pub async fn run(client: Option<&Client>, command: &Streams) -> Result<Output, F
                 }
                 body.insert("sourceCeilingPercent".into(), json!(percent));
             }
+            if let Some(record) = record {
+                body.insert("record".into(), json!(record == "on"));
+            }
             if body.is_empty() {
                 return Err(Failure::Invalid(
-                    "nothing to change: give --source, --encoding-profile, --bitrate or \
-                     --source-ceiling-percent"
+                    "nothing to change: give --source, --encoding-profile, --bitrate, \
+                     --source-ceiling-percent or --record"
                         .into(),
                 ));
             }

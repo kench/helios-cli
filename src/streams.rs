@@ -1,8 +1,11 @@
 //! `heliosctl streams`: list, get, start, stop, update and set-destination (HLD 7.3.4.1).
 //!
 //! Changes carry a client token, so they're retried safely; `--dry-run` checks the input with
-//! the service's rules and prints the request without sending it; `--wait` polls GetStream until
-//! the device has applied the change (exit 0), refused it (4) or the time runs out (5).
+//! the service's rules and prints the request without sending it. A device on Helios 0.16.0 or
+//! later applies a change before the API answers, or refuses it whole (exit 4, every refused
+//! setting listed); an older one applies it later. `--wait` then polls GetStream until the stream
+//! has reached its runtime state: `live` if its desired state is live, else `stopped` (exit 0).
+//! It ends early if the stream fails (1) or a setting is refused (4), and at `--timeout` (5).
 
 use std::io::Read;
 use std::path::PathBuf;
@@ -89,7 +92,7 @@ pub struct Target {
     /// Check the input and print the request without sending it.
     #[arg(long)]
     pub dry_run: bool,
-    /// Wait until the device has applied the change.
+    /// Wait until the stream is live (desired live) or stopped, and the change applied.
     #[arg(long)]
     pub wait: bool,
     /// How long --wait waits, in seconds.
@@ -119,13 +122,13 @@ pub async fn run(client: Option<&Client>, command: &Streams) -> Result<Output, F
             let id = device_id(client, device).await?;
             let path = format!("/v1/control/devices/{}/streams", segment(&id));
             let listed = client.call(Method::Get, &path, &[], None, true).await?;
-            Ok(Output::Streams(redact(listed)))
+            Ok(Output::Streams(listed))
         }
         Streams::Get { device, stream } => {
             check_name("stream", stream)?;
             let client = need()?;
             let id = device_id(client, device).await?;
-            Ok(Output::Stream(redact(get(client, &id, stream).await?)))
+            Ok(Output::Stream(get(client, &id, stream).await?))
         }
         Streams::Start(target) => change(client, target, Method::Post, "/start", json!({})).await,
         Streams::Stop(target) => change(client, target, Method::Post, "/stop", json!({})).await,
@@ -257,16 +260,16 @@ async fn change(
         segment(&target.stream)
     );
     if target.dry_run {
-        return Ok(Output::Json(redact(json!({
+        return Ok(Output::Json(json!({
             "dryRun": true,
             "request": {"method": method.as_str(), "path": path, "body": body},
-        }))));
+        })));
     }
     let client = client
         .ok_or_else(|| Failure::Other("no client for a command that calls the API".into()))?;
     let changed = client.call(method, &path, &[], Some(&body), true).await?;
     if !target.wait {
-        return Ok(Output::Stream(redact(changed)));
+        return Ok(Output::Stream(changed));
     }
     let before = changed["stream"]["rejected"].clone();
     let deadline = Instant::now() + Duration::from_secs(target.timeout);
@@ -279,12 +282,33 @@ async fn change(
                 refused["reason"].as_str().unwrap_or("no reason given"),
             )));
         }
-        if stream["stream"]["pending"] == false {
-            return Ok(Output::Stream(redact(stream)));
+        let described = &stream["stream"];
+        let want = if described["desired"]["state"] == "live" {
+            "live"
+        } else {
+            "stopped"
+        };
+        let have = described["reported"]["state"].as_str();
+        let applied = described["pending"] != true;
+        if applied && have == Some(want) {
+            return Ok(Output::Stream(stream));
+        }
+        if applied && want == "live" && have == Some("failed") {
+            return Err(Failure::Other(format!(
+                "the stream failed: {}",
+                described["reported"]["lastError"]
+                    .as_str()
+                    .unwrap_or("no reason given")
+            )));
         }
         if Instant::now() >= deadline {
+            let now = match (applied, have) {
+                (false, _) => "the device hadn't applied the change yet".to_owned(),
+                (true, Some(state)) => format!("it's {state}"),
+                (true, None) => "the device hasn't reported it".to_owned(),
+            };
             return Err(Failure::TimedOut(format!(
-                "the device hadn't applied the change after {} s (it may still)",
+                "the stream wasn't {want} after {} s: {now} (it may still be)",
                 target.timeout
             )));
         }
@@ -423,32 +447,10 @@ fn check_token(token: &str) -> Result<(), Failure> {
     check_name("client token", token)
 }
 
-/// `value` with every SRT passphrase in a destination URL replaced by `***`: the API returns
-/// destinations as set, and heliosctl never prints a secret.
-#[must_use]
+/// Secrets as `***` (see [`crate::secrets::hide`]); kept for the tests' sake.
+#[cfg(test)]
 pub fn redact(value: Value) -> Value {
-    match value {
-        Value::String(text) if text.starts_with("srt://") || text.starts_with("srtla://") => {
-            Value::String(redact_url(&text))
-        }
-        Value::Array(items) => Value::Array(items.into_iter().map(redact).collect()),
-        Value::Object(map) => Value::Object(map.into_iter().map(|(k, v)| (k, redact(v))).collect()),
-        other => other,
-    }
-}
-
-fn redact_url(url: &str) -> String {
-    let Some((base, query)) = url.split_once('?') else {
-        return url.to_owned();
-    };
-    let pairs: Vec<String> = query
-        .split('&')
-        .map(|pair| match pair.split_once('=') {
-            Some(("passphrase", _)) => "passphrase=***".to_owned(),
-            _ => pair.to_owned(),
-        })
-        .collect();
-    format!("{base}?{}", pairs.join("&"))
+    crate::secrets::hide(value)
 }
 
 #[cfg(test)]

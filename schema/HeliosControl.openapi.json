@@ -3,7 +3,7 @@
     "info": {
         "title": "Helios Control API",
         "version": "2026-11-21",
-        "description": "Control API for operators and agents: see devices and their streams, and start, stop and\nadjust the streams (HLD section 7.3). Served by the bootstrap service's REST API under\n/v1/control. Authenticated with AWS IAM (SigV4, API Gateway): callers assume helios-operator.\n\nChanges are written to the device's `stream` shadow as desired state and return 202: the\ndevice applies them when it can (also after being offline) and reports the result, which\nGetStream shows. The device is the final judge of every value: it refuses sources, profiles\nand destinations it can't use, and reports why. The cloud never sends ffmpeg arguments or\npipelines; profiles and the streams themselves are defined on the device."
+        "description": "Control API for operators and agents: see devices and their streams, and start, stop and\nadjust the streams (HLD section 7.3). Served by the bootstrap service's REST API under\n/v1/control. Authenticated with AWS IAM (SigV4, API Gateway): callers assume helios-operator.\n\nChanges are commands to the device (HeliosDeviceCommands; the page \"Helios - State\nManagement: Tenets and Practices\"): the device must be online, applies a change whole or not\nat all, and answers within seconds, so a change's response shows the stream as it is after\nit. A device that doesn't answer gives DeviceUnreachable; a refusal gives StreamChangeRefused\nwith every reason. Nothing is queued for later. Devices whose Helios predates the stream\ncommands still get changes as the `stream` shadow's desired state, applied when they can,\nwith `pending` until they report them. The device is the final judge of every value. The\ncloud never sends ffmpeg arguments or pipelines; profiles and the streams themselves are\ndefined on the device."
     },
     "paths": {
         "/v1/control/devices": {
@@ -598,7 +598,7 @@
                 }
             },
             "patch": {
-                "description": "Changes a stream's source, profile or bitrate. Members left out are unchanged. The\ndestination has its own operation, SetStreamDestination.",
+                "description": "Changes a stream's source, profile, bitrate, ceiling or recording (helios-stream-update-v1).\nMembers left out are unchanged. The device applies them all or none: a refusal gives\nStreamChangeRefused with every reason. The destination has its own operation,\nSetStreamDestination.",
                 "operationId": "UpdateStream",
                 "requestBody": {
                     "content": {
@@ -665,11 +665,11 @@
                         }
                     },
                     "409": {
-                        "description": "SettingUnavailable 409 response",
+                        "description": "StreamChangeRefused 409 response",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/SettingUnavailableResponseContent"
+                                    "$ref": "#/components/schemas/StreamChangeRefusedResponseContent"
                                 }
                             }
                         }
@@ -700,13 +700,23 @@
                                 }
                             }
                         }
+                    },
+                    "504": {
+                        "description": "DeviceUnreachable 504 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeviceUnreachableResponseContent"
+                                }
+                            }
+                        }
                     }
                 }
             }
         },
         "/v1/control/devices/{deviceId}/streams/{streamId}/destination": {
             "put": {
-                "description": "Sets where a stream's video goes: an SRT or SRTLA URL (DestinationUrl). Its own operation\nbecause it decides where a device's video is sent; the response shows the previous\ndestination as well as the new one.",
+                "description": "Sets where a stream's video goes: an SRT or SRTLA URL (DestinationUrl). Its own operation\nbecause it decides where a device's video is sent; the response shows the previous\ndestination as well as the new one. The URL goes to the device sealed to its key (it can hold a\npassphrase, and AWS keeps a command's parameters); the cloud keeps it, encrypted at rest, so\nGetStream can show it to operators.",
                 "operationId": "SetStreamDestination",
                 "requestBody": {
                     "content": {
@@ -773,6 +783,16 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "StreamChangeRefused 409 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StreamChangeRefusedResponseContent"
+                                }
+                            }
+                        }
+                    },
                     "429": {
                         "description": "RateLimited 429 response",
                         "headers": {
@@ -799,13 +819,23 @@
                                 }
                             }
                         }
+                    },
+                    "504": {
+                        "description": "DeviceUnreachable 504 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeviceUnreachableResponseContent"
+                                }
+                            }
+                        }
                     }
                 }
             }
         },
         "/v1/control/devices/{deviceId}/streams/{streamId}/start": {
             "post": {
-                "description": "Sets a stream live: it runs whenever its source is there. Idempotent.",
+                "description": "Sets a stream live: it runs whenever its source is there. Idempotent. The response comes once\nthe device has taken it (helios-stream-start-v1), with the stream `starting` or\n`waiting_for_input`; going on air takes a few seconds more.",
                 "operationId": "StartStream",
                 "requestBody": {
                     "content": {
@@ -894,6 +924,16 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/InternalErrorResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "504": {
+                        "description": "DeviceUnreachable 504 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeviceUnreachableResponseContent"
                                 }
                             }
                         }
@@ -1002,7 +1042,7 @@
         },
         "/v1/control/devices/{deviceId}/streams/{streamId}/stop": {
             "post": {
-                "description": "Sets a stream stopped. Idempotent.",
+                "description": "Sets a stream stopped (helios-stream-stop-v1). Idempotent.",
                 "operationId": "StopStream",
                 "requestBody": {
                     "content": {
@@ -1091,6 +1131,16 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/InternalErrorResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "504": {
+                        "description": "DeviceUnreachable 504 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeviceUnreachableResponseContent"
                                 }
                             }
                         }
@@ -2308,6 +2358,23 @@
                     "mounted"
                 ]
             },
+            "RefusedSetting": {
+                "type": "object",
+                "properties": {
+                    "setting": {
+                        "type": "string",
+                        "description": "The input member refused: source, profile, destination, bitrate, sourceCeilingPercent or\nrecord."
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Why, for people."
+                    }
+                },
+                "required": [
+                    "reason",
+                    "setting"
+                ]
+            },
             "RejectedSetting": {
                 "type": "object",
                 "properties": {
@@ -2428,10 +2495,11 @@
                         "maxLength": 1024,
                         "minLength": 10,
                         "pattern": "^srt(la)?://(\\[[0-9A-Fa-f:.]+\\]|[A-Za-z0-9._-]+):[0-9]{1,5}(\\?[^\\s#]*)?$",
-                        "description": "The destination before this change (the desired one if set, else the reported one)."
+                        "description": "The destination before this change (the one last set through this API if any, else the\nreported one)."
                     },
                     "shadowVersion": {
-                        "type": "number"
+                        "type": "number",
+                        "description": "The `stream` shadow's version: the one written for a device on desired state, the one\nread for a device on commands (deprecated, as `pending` is)."
                     }
                 },
                 "required": [
@@ -2476,19 +2544,6 @@
                 "required": [
                     "network"
                 ]
-            },
-            "SettingUnavailableResponseContent": {
-                "type": "object",
-                "description": "The source or profile isn't one the device last reported: not attached, not an ingest key\nit has, or not one of its profiles. The device would refuse it.",
-                "properties": {
-                    "message": {
-                        "type": "string"
-                    },
-                    "setting": {
-                        "type": "string",
-                        "description": "source or profile."
-                    }
-                }
             },
             "Source": {
                 "description": "Where a stream's video comes from: one of the inputs the device reports (ListInputs).",
@@ -2545,13 +2600,14 @@
             },
             "StartStreamResponseContent": {
                 "type": "object",
-                "description": "What a change returns: the stream with the new desired state, and the shadow version\nwritten. The device applies it later; GetStream shows when reported has caught up.",
+                "description": "What a change returns: the stream as it is after the change. For a device on commands it has\napplied it already; for one on desired state, GetStream shows when reported has caught up.",
                 "properties": {
                     "stream": {
                         "$ref": "#/components/schemas/StreamDescription"
                     },
                     "shadowVersion": {
-                        "type": "number"
+                        "type": "number",
+                        "description": "The `stream` shadow's version: the one written for a device on desired state, the one\nread for a device on commands (deprecated, as `pending` is)."
                     }
                 },
                 "required": [
@@ -2573,13 +2629,14 @@
             },
             "StopStreamResponseContent": {
                 "type": "object",
-                "description": "What a change returns: the stream with the new desired state, and the shadow version\nwritten. The device applies it later; GetStream shows when reported has caught up.",
+                "description": "What a change returns: the stream as it is after the change. For a device on commands it has\napplied it already; for one on desired state, GetStream shows when reported has caught up.",
                 "properties": {
                     "stream": {
                         "$ref": "#/components/schemas/StreamDescription"
                     },
                     "shadowVersion": {
-                        "type": "number"
+                        "type": "number",
+                        "description": "The `stream` shadow's version: the one written for a device on desired state, the one\nread for a device on commands (deprecated, as `pending` is)."
                     }
                 },
                 "required": [
@@ -2587,9 +2644,27 @@
                     "stream"
                 ]
             },
+            "StreamChangeRefusedResponseContent": {
+                "type": "object",
+                "description": "The device refused a stream change and changed nothing. Every refused setting is listed.",
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    },
+                    "refused": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RefusedSetting"
+                        }
+                    }
+                },
+                "required": [
+                    "refused"
+                ]
+            },
             "StreamDescription": {
                 "type": "object",
-                "description": "A stream: what's been asked of it (desired) and what the device reports (reported).",
+                "description": "A stream: what's been asked of it through this API (desired) and what the device reports\n(reported).",
                 "properties": {
                     "streamId": {
                         "type": "string",
@@ -2605,14 +2680,15 @@
                     },
                     "pending": {
                         "type": "boolean",
-                        "description": "Whether the device hasn't caught up with the desired state yet."
+                        "deprecated": true,
+                        "description": "Whether the device hasn't caught up with the desired state yet. Always false for a device\non commands, which applies a change before the response; computed only for devices whose\nHelios predates the stream commands, and removed with them.\nThis shape is deprecated since 2026-11-26: Changes are commands now; a change's response shows the result."
                     },
                     "rejected": {
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/RejectedSetting"
                         },
-                        "description": "Desired values the device refused, and why."
+                        "description": "Desired values a device on desired state refused, and why. A device on commands refuses a\nchange in the response instead (StreamChangeRefused)."
                     }
                 },
                 "required": [
@@ -2623,6 +2699,7 @@
             },
             "StreamDesired": {
                 "type": "object",
+                "description": "What's been asked of a stream through this API: for a device on commands, the cloud's record\nof the settings it last applied (stored encrypted at rest, so a destination's passphrase is\nshown to operators); for one on desired state, the shadow's desired state.",
                 "properties": {
                     "state": {
                         "$ref": "#/components/schemas/DesiredState"
@@ -2836,13 +2913,14 @@
             },
             "UpdateStreamResponseContent": {
                 "type": "object",
-                "description": "What a change returns: the stream with the new desired state, and the shadow version\nwritten. The device applies it later; GetStream shows when reported has caught up.",
+                "description": "What a change returns: the stream as it is after the change. For a device on commands it has\napplied it already; for one on desired state, GetStream shows when reported has caught up.",
                 "properties": {
                     "stream": {
                         "$ref": "#/components/schemas/StreamDescription"
                     },
                     "shadowVersion": {
-                        "type": "number"
+                        "type": "number",
+                        "description": "The `stream` shadow's version: the one written for a device on desired state, the one\nread for a device on commands (deprecated, as `pending` is)."
                     }
                 },
                 "required": [
@@ -3022,13 +3100,21 @@
             },
             "WifiNetwork": {
                 "type": "object",
-                "description": "A network the device is set to join. Never includes the passphrase.",
+                "description": "A network the device is set to join.",
                 "properties": {
                     "ssid": {
                         "type": "string",
                         "maxLength": 32,
                         "minLength": 1,
                         "description": "A Wi-Fi network's name. At most 32 bytes in UTF-8: the device refuses a longer one."
+                    },
+                    "passphrase": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "minLength": 8,
+                        "pattern": "^([ -~]{8,63}|[0-9A-Fa-f]{64})$",
+                        "description": "The passphrase as last set through this API, from the cloud's record (stored encrypted at\nrest; for operators). Absent for an open network, and for one set before the cloud kept\npassphrases or on the device by other means.",
+                        "format": "password"
                     },
                     "security": {
                         "$ref": "#/components/schemas/WifiSecurity"

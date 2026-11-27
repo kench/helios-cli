@@ -4,7 +4,7 @@
 .SH NAME
 heliosctl\-streams\-stop \- Stop a stream (desired state stopped)
 .SH SYNOPSIS
-\fBheliosctl streams stop\fR [\fB\-\-dry\-run\fR] [\fB\-\-json\fR] [\fB\-\-endpoint\fR] [\fB\-\-wait\fR] [\fB\-\-profile\fR] [\fB\-\-timeout\fR] [\fB\-\-client\-token\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIDEVICE\fR> <\fISTREAM\fR> 
+\fBheliosctl streams stop\fR [\fB\-\-dry\-run\fR] [\fB\-\-json\fR] [\fB\-\-show\-secrets\fR] [\fB\-\-wait\fR] [\fB\-\-endpoint\fR] [\fB\-\-timeout\fR] [\fB\-\-client\-token\fR] [\fB\-\-profile\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIDEVICE\fR> <\fISTREAM\fR> 
 .SH DESCRIPTION
 Stop a stream (desired state stopped)
 .SH OPTIONS
@@ -15,20 +15,23 @@ Check the input and print the request without sending it
 \fB\-\-json\fR
 Print one JSON document on stdout, and errors as JSON on stderr
 .TP
-\fB\-\-endpoint\fR \fI<ENDPOINT>\fR
-The Control API\*(Aqs base URL (…/dev)
+\fB\-\-show\-secrets\fR
+Show secrets in full: destinations\*(Aq and Wi\-Fi networks\*(Aq passphrases (else `***`)
 .TP
 \fB\-\-wait\fR
-Wait until the device has applied the change
+Wait until the stream is live (desired live) or stopped, and the change applied
 .TP
-\fB\-\-profile\fR \fI<PROFILE>\fR
-The AWS profile: one that assumes helios\-operator [default: helios\-operator]
+\fB\-\-endpoint\fR \fI<ENDPOINT>\fR
+The Control API\*(Aqs base URL (…/dev)
 .TP
 \fB\-\-timeout\fR \fI<TIMEOUT>\fR [default: 60]
 How long \-\-wait waits, in seconds
 .TP
 \fB\-\-client\-token\fR \fI<CLIENT_TOKEN>\fR
 Makes the change safe to retry (default: a new random one)
+.TP
+\fB\-\-profile\fR \fI<PROFILE>\fR
+The AWS profile: one that assumes helios\-operator [default: helios\-operator]
 .TP
 \fB\-\-region\fR \fI<REGION>\fR
 The AWS region [default: the profile\*(Aqs]

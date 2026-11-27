@@ -4,7 +4,7 @@
 .SH NAME
 heliosctl\-uplinks \- A device\*(Aqs network interfaces: addresses, routes, its public address checks, and which uplinks its SRTLA bonds use or hold in standby
 .SH SYNOPSIS
-\fBheliosctl uplinks\fR [\fB\-\-json\fR] [\fB\-\-show\-public\-addresses\fR] [\fB\-\-endpoint\fR] [\fB\-\-profile\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIDEVICE\fR> 
+\fBheliosctl uplinks\fR [\fB\-\-json\fR] [\fB\-\-show\-public\-addresses\fR] [\fB\-\-show\-secrets\fR] [\fB\-\-endpoint\fR] [\fB\-\-profile\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIDEVICE\fR> 
 .SH DESCRIPTION
 A device\*(Aqs network interfaces: addresses, routes, its public address checks, and which uplinks its SRTLA bonds use or hold in standby
 .SH OPTIONS
@@ -14,6 +14,9 @@ Print one JSON document on stdout, and errors as JSON on stderr
 .TP
 \fB\-\-show\-public\-addresses\fR
 Also show each uplink\*(Aqs public IPv4 address. Off by default: it\*(Aqs personal data (it locates the connection), so keep it out of logs and anything shared
+.TP
+\fB\-\-show\-secrets\fR
+Show secrets in full: destinations\*(Aq and Wi\-Fi networks\*(Aq passphrases (else `***`)
 .TP
 \fB\-\-endpoint\fR \fI<ENDPOINT>\fR
 The Control API\*(Aqs base URL (…/dev)

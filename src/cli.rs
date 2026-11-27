@@ -28,6 +28,9 @@ pub struct Cli {
     /// Print one JSON document on stdout, and errors as JSON on stderr.
     #[arg(long, global = true)]
     pub json: bool,
+    /// Show secrets in full: destinations' and Wi-Fi networks' passphrases (else `***`).
+    #[arg(long, global = true)]
+    pub show_secrets: bool,
     /// The Control API's base URL (…/dev).
     #[arg(long, global = true, env = "HELIOS_CONTROL_URL")]
     pub endpoint: Option<String>,
@@ -120,8 +123,14 @@ pub async fn run(
         }
     };
     let json = cli.json;
+    let show_secrets = cli.show_secrets;
     match execute(cli).await {
         Ok(result) => {
+            let result = if show_secrets {
+                result
+            } else {
+                result.hide_secrets()
+            };
             let _ = writeln!(out, "{}", result.render(json));
             exit::OK
         }

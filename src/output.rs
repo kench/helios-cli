@@ -30,6 +30,24 @@ pub enum Output {
 }
 
 impl Output {
+    /// The same output with its secrets as `***` ([`crate::secrets::hide`]).
+    #[must_use]
+    pub fn hide_secrets(self) -> Self {
+        use crate::secrets::hide;
+        match self {
+            Self::Devices(v) => Self::Devices(hide(v)),
+            Self::Device(v) => Self::Device(hide(v)),
+            Self::Streams(v) => Self::Streams(hide(v)),
+            Self::Stream(v) => Self::Stream(hide(v)),
+            Self::Inputs(v) => Self::Inputs(hide(v)),
+            Self::Profiles(v) => Self::Profiles(hide(v)),
+            Self::Wifi(v) => Self::Wifi(hide(v)),
+            Self::Location(v) => Self::Location(hide(v)),
+            Self::Uplinks(v) => Self::Uplinks(hide(v)),
+            Self::Json(v) => Self::Json(hide(v)),
+        }
+    }
+
     /// The text to print: one JSON document with `json`, a summary otherwise.
     #[must_use]
     pub fn render(&self, json: bool) -> String {
@@ -239,10 +257,16 @@ fn wifi(value: &Value) -> String {
                 "no"
             }
             .into(),
+            // *** unless --show-secrets; - when the cloud keeps none for it.
+            text(&network["passphrase"]),
         ]
     });
     reported(
-        table(["SSID", "SECURITY", "HIDDEN"], &rows, "no networks"),
+        table(
+            ["SSID", "SECURITY", "HIDDEN", "PASSPHRASE"],
+            &rows,
+            "no networks",
+        ),
         value,
     )
 }
@@ -859,14 +883,23 @@ mod tests {
             profiles.contains("1000-8000") && profiles.contains("belacoder"),
             "{profiles}"
         );
-        let networks = Output::Wifi(json!({"networks": [
-            {"ssid": "Home", "security": "personal", "hidden": false},
+        let wifi = json!({"networks": [
+            {"ssid": "Home", "security": "personal", "hidden": false, "passphrase": "correct horse battery"},
             {"ssid": "Back", "security": "open", "hidden": true},
-        ]}))
-        .render(false);
+        ]});
+        let networks = Output::Wifi(wifi.clone()).hide_secrets().render(false);
+        assert!(networks.contains("PASSPHRASE"), "{networks}");
         assert!(
-            networks.lines().nth(2).unwrap().ends_with("yes"),
+            networks.lines().nth(1).unwrap().ends_with("***"),
             "{networks}"
+        );
+        let back = networks.lines().nth(2).unwrap();
+        assert!(back.contains("yes") && back.ends_with('-'), "{networks}");
+        assert!(!networks.contains("correct horse"), "{networks}");
+        let shown = Output::Wifi(wifi).render(false);
+        assert!(
+            shown.contains("correct horse battery"),
+            "--show-secrets: {shown}"
         );
         assert!(
             Output::Wifi(json!({"networks": []}))

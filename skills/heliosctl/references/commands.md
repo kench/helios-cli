@@ -49,9 +49,13 @@ Changes (each takes `--dry-run`, `--wait`, `--timeout <seconds>` (default 60) an
   `latency` (20 to 30000 ms) and `passphrase` (10 to 79 characters) parameters. A URL with a
   passphrase must use `--url-file`.
 
-A stream change returns `{"stream": {...}, "shadowVersion": n}` at once; with `--wait` it returns
-once the device has applied it (`pending: false`), or fails with exit 4 (a new entry in
-`rejected`) or 5 (time ran out).
+A stream change returns `{"stream": {...}, "shadowVersion": n}`. On a device with Helios 0.16.0
+or later the device has already applied it (`reported` is the stream after the change), or it
+refused all of it: exit 4, `StreamChangeRefused` with `refused: [{"setting", "reason"}]`, nothing
+changed. A device that's offline gives `DeviceUnreachable` (5): nothing is queued. With `--wait`
+the command returns once the stream is `live` (desired live) or `stopped`, or fails with exit 1
+(the stream failed: see `lastError`), 4 or 5 (time ran out; the message says the stream's
+state). `pending` is deprecated: always false on Helios 0.16.0 and later.
 
 ## Inputs and profiles
 
@@ -87,7 +91,8 @@ once the device has applied it (`pending: false`), or fails with exit 4 (a new e
 ## Wi-Fi
 
 - `heliosctl --json wifi list <device>`: the networks the device joins: `ssid`, `security`
-  (`personal` or `open`), `hidden`. Never passphrases.
+  (`personal` or `open`), `hidden`, and `passphrase` as `***` when the Control API keeps one
+  (`--show-secrets` prints it: only when the user asks).
 - `heliosctl --json wifi set <device> --ssid <ssid> --passphrase-file <file|->`, or `--open`
   for an open network; `--hidden` if it doesn't broadcast its SSID; `--dry-run` (shows the
   passphrase as `***`). The device applies it before the command returns.

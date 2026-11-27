@@ -4,7 +4,7 @@
 .SH NAME
 heliosctl\-devices\-get \- One device: its record, connection, Helios version and modules
 .SH SYNOPSIS
-\fBheliosctl devices get\fR [\fB\-\-json\fR] [\fB\-\-endpoint\fR] [\fB\-\-profile\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIDEVICE\fR> 
+\fBheliosctl devices get\fR [\fB\-\-json\fR] [\fB\-\-show\-secrets\fR] [\fB\-\-endpoint\fR] [\fB\-\-profile\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIDEVICE\fR> 
 .SH DESCRIPTION
 One device: its record, connection, Helios version and modules.
 .PP
@@ -13,6 +13,9 @@ The device is its device ID (d\-…) or its thing name (t\-…).
 .TP
 \fB\-\-json\fR
 Print one JSON document on stdout, and errors as JSON on stderr
+.TP
+\fB\-\-show\-secrets\fR
+Show secrets in full: destinations\*(Aq and Wi\-Fi networks\*(Aq passphrases (else `***`)
 .TP
 \fB\-\-endpoint\fR \fI<ENDPOINT>\fR
 The Control API\*(Aqs base URL (…/dev)

@@ -4,13 +4,16 @@
 .SH NAME
 heliosctl\-wifi \- The Wi\-Fi networks a device joins: list, set, remove
 .SH SYNOPSIS
-\fBheliosctl wifi\fR [\fB\-\-json\fR] [\fB\-\-endpoint\fR] [\fB\-\-profile\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIsubcommands\fR>
+\fBheliosctl wifi\fR [\fB\-\-json\fR] [\fB\-\-show\-secrets\fR] [\fB\-\-endpoint\fR] [\fB\-\-profile\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIsubcommands\fR>
 .SH DESCRIPTION
 The Wi\-Fi networks a device joins: list, set, remove
 .SH OPTIONS
 .TP
 \fB\-\-json\fR
 Print one JSON document on stdout, and errors as JSON on stderr
+.TP
+\fB\-\-show\-secrets\fR
+Show secrets in full: destinations\*(Aq and Wi\-Fi networks\*(Aq passphrases (else `***`)
 .TP
 \fB\-\-endpoint\fR \fI<ENDPOINT>\fR
 The Control API\*(Aqs base URL (…/dev)
@@ -26,7 +29,7 @@ Print help
 .SH SUBCOMMANDS
 .TP
 heliosctl\-wifi\-list(1)
-The Wi\-Fi networks the device is set to join (never their passphrases)
+The Wi\-Fi networks the device is set to join (passphrases as *** unless \-\-show\-secrets)
 .TP
 heliosctl\-wifi\-set(1)
 Add a network, or change one: the device applies it before this returns

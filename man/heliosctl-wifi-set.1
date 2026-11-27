@@ -4,7 +4,7 @@
 .SH NAME
 heliosctl\-wifi\-set \- Add a network, or change one: the device applies it before this returns
 .SH SYNOPSIS
-\fBheliosctl wifi set\fR [\fB\-\-json\fR] [\fB\-\-endpoint\fR] [\fB\-\-passphrase\-file\fR] [\fB\-\-open\fR] [\fB\-\-profile\fR] [\fB\-\-hidden\fR] [\fB\-\-region\fR] [\fB\-\-dry\-run\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fB\-\-ssid\fR> <\fIDEVICE\fR> 
+\fBheliosctl wifi set\fR [\fB\-\-json\fR] [\fB\-\-passphrase\-file\fR] [\fB\-\-show\-secrets\fR] [\fB\-\-endpoint\fR] [\fB\-\-open\fR] [\fB\-\-hidden\fR] [\fB\-\-profile\fR] [\fB\-\-dry\-run\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fB\-\-ssid\fR> <\fIDEVICE\fR> 
 .SH DESCRIPTION
 Add a network, or change one: the device applies it before this returns
 .SH OPTIONS
@@ -15,26 +15,29 @@ Print one JSON document on stdout, and errors as JSON on stderr
 \fB\-\-ssid\fR \fI<SSID>\fR
 The network\*(Aqs name (SSID), at most 32 bytes
 .TP
-\fB\-\-endpoint\fR \fI<ENDPOINT>\fR
-The Control API\*(Aqs base URL (…/dev)
-.TP
 \fB\-\-passphrase\-file\fR \fI<PASSPHRASE_FILE>\fR
 A file holding the WPA2/WPA3\-Personal passphrase, or \- for stdin
+.TP
+\fB\-\-show\-secrets\fR
+Show secrets in full: destinations\*(Aq and Wi\-Fi networks\*(Aq passphrases (else `***`)
+.TP
+\fB\-\-endpoint\fR \fI<ENDPOINT>\fR
+The Control API\*(Aqs base URL (…/dev)
 .TP
 \fB\-\-open\fR
 An open network, with no passphrase
 .TP
-\fB\-\-profile\fR \fI<PROFILE>\fR
-The AWS profile: one that assumes helios\-operator [default: helios\-operator]
-.TP
 \fB\-\-hidden\fR
 The network doesn\*(Aqt broadcast its SSID
 .TP
-\fB\-\-region\fR \fI<REGION>\fR
-The AWS region [default: the profile\*(Aqs]
+\fB\-\-profile\fR \fI<PROFILE>\fR
+The AWS profile: one that assumes helios\-operator [default: helios\-operator]
 .TP
 \fB\-\-dry\-run\fR
 Check the input and print the request (passphrase hidden) without sending it
+.TP
+\fB\-\-region\fR \fI<REGION>\fR
+The AWS region [default: the profile\*(Aqs]
 .TP
 \fB\-h\fR, \fB\-\-help\fR
 Print help

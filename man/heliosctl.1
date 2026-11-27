@@ -8,7 +8,7 @@ heliosctl \- The Helios Control API\*(Aqs command\-line client, for operators an
 .ie \n(.g .ds Aq \(aq
 .el .ds Aq '
 .SH SYNOPSIS
-\fBheliosctl\fR [\fB\-\-json\fR] [\fB\-\-endpoint\fR] [\fB\-\-profile\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] <\fIsubcommands\fR>
+\fBheliosctl\fR [\fB\-\-json\fR] [\fB\-\-show\-secrets\fR] [\fB\-\-endpoint\fR] [\fB\-\-profile\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] <\fIsubcommands\fR>
 .ie \n(.g .ds Aq \(aq
 .el .ds Aq '
 .SH DESCRIPTION
@@ -19,6 +19,9 @@ The Helios Control API\*(Aqs command\-line client, for operators and AI agents (
 .TP
 \fB\-\-json\fR
 Print one JSON document on stdout, and errors as JSON on stderr
+.TP
+\fB\-\-show\-secrets\fR
+Show secrets in full: destinations\*(Aq and Wi\-Fi networks\*(Aq passphrases (else `***`)
 .TP
 \fB\-\-endpoint\fR \fI<ENDPOINT>\fR
 The Control API\*(Aqs base URL (…/dev)

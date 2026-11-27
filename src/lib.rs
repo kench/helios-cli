@@ -8,4 +8,5 @@ pub mod destination;
 pub mod error;
 pub mod inventory;
 pub mod output;
+pub mod secrets;
 pub mod streams;

@@ -159,7 +159,7 @@ async fn a_passphrase_never_comes_from_the_command_line() {
         url: None,
         url_file: Some(file),
     };
-    let Output::Json(printed) = run(None, &from_file).await.unwrap() else {
+    let Output::Json(printed) = run(None, &from_file).await.unwrap().hide_secrets() else {
         panic!("not JSON");
     };
     assert_eq!(
@@ -262,6 +262,7 @@ async fn waits_until_the_device_applies_the_change() {
     let Output::Stream(done) = run(Some(&client), &Streams::Start(target(true, 10)))
         .await
         .unwrap()
+        .hide_secrets()
     else {
         panic!("not a stream");
     };
@@ -383,5 +384,123 @@ async fn lists_gets_and_changes_without_waiting() {
         )
         .await
         .is_err()
+    );
+}
+
+fn reported(desired: &str, state: &str, last_error: Option<&str>) -> String {
+    let mut reported = json!({"state": state, "destination": "srt://h:1?streamid=a"});
+    if let Some(error) = last_error {
+        reported["lastError"] = json!(error);
+    }
+    json!({"stream": {
+        "streamId": "main", "desired": {"state": desired}, "reported": reported, "pending": false,
+    }, "shadowVersion": 7})
+    .to_string()
+}
+
+#[tokio::test]
+async fn waits_for_the_stream_to_be_live_not_just_applied() {
+    // A device on commands has applied the change when the API answers: --wait waits for live.
+    let (endpoint, received) = server(vec![
+        (202, vec![], reported("live", "starting", None)),
+        (200, vec![], reported("live", "starting", None)),
+        (200, vec![], reported("live", "live", None)),
+    ])
+    .await;
+    let client = client(&endpoint);
+    let Output::Stream(done) = run(Some(&client), &Streams::Start(target(true, 30)))
+        .await
+        .unwrap()
+    else {
+        panic!("not a stream");
+    };
+    assert_eq!(done["stream"]["reported"]["state"], "live");
+    assert_eq!(
+        received.lock().unwrap().len(),
+        3,
+        "the change and two reads"
+    );
+
+    // Stopped is reached at once.
+    let (endpoint, received) =
+        server(vec![(202, vec![], reported("stopped", "stopped", None))]).await;
+    let client = crate::client::tests::client(&endpoint);
+    run(Some(&client), &Streams::Stop(target(true, 30)))
+        .await
+        .unwrap();
+    assert_eq!(received.lock().unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn waiting_ends_when_the_stream_fails_or_the_time_runs_out() {
+    let (endpoint, _) = server(vec![
+        (202, vec![], reported("live", "starting", None)),
+        (
+            200,
+            vec![],
+            reported("live", "failed", Some("ffmpeg exited: no such device")),
+        ),
+    ])
+    .await;
+    let client = client(&endpoint);
+    let failure = run(Some(&client), &Streams::Start(target(true, 30)))
+        .await
+        .unwrap_err();
+    assert_eq!(failure.exit_code(), 1);
+    assert!(failure.to_string().contains("no such device"), "{failure}");
+
+    let (endpoint, _) = server(vec![(
+        202,
+        vec![],
+        reported("live", "waiting_for_input", None),
+    )])
+    .await;
+    let client = crate::client::tests::client(&endpoint);
+    let failure = run(Some(&client), &Streams::Start(target(true, 1)))
+        .await
+        .unwrap_err();
+    assert_eq!(failure.exit_code(), 5);
+    assert!(
+        failure.to_string().contains("it's waiting_for_input"),
+        "{failure}"
+    );
+}
+
+#[tokio::test]
+async fn a_refused_change_lists_every_setting() {
+    let refused = json!({
+        "message": "The device refused the change and changed nothing.",
+        "refused": [
+            {"setting": "profile", "reason": "no profile \"x\""},
+            {"setting": "sourceCeilingPercent", "reason": "too high"},
+        ],
+    })
+    .to_string();
+    let (endpoint, _) = server(vec![(
+        409,
+        vec![("X-Amzn-Errortype", "StreamChangeRefused")],
+        refused,
+    )])
+    .await;
+    let client = client(&endpoint);
+    let update = Streams::Update {
+        target: target(false, 60),
+        source: None,
+        encoding_profile: Some("x".into()),
+        bitrate: None,
+        source_ceiling_percent: Some(300),
+        record: None,
+    };
+    let failure = run(Some(&client), &update).await.unwrap_err();
+    assert_eq!(failure.exit_code(), 4);
+    let text = failure.to_string();
+    assert!(
+        text.contains("profile: no profile \"x\"")
+            && text.contains("sourceCeilingPercent: too high"),
+        "{text}"
+    );
+    assert_eq!(
+        failure.to_json()["error"]["refused"][1]["setting"],
+        "sourceCeilingPercent"
     );
 }

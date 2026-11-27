@@ -1,10 +1,10 @@
 .ie \n(.g .ds Aq \(aq
 .el .ds Aq '
-.TH heliosctl-wifi-remove 1 0.4.0 "heliosctl 0.4.0" "Helios Manual"
+.TH heliosctl-wifi-remove 1 0.5.0 "heliosctl 0.5.0" "Helios Manual"
 .SH NAME
 heliosctl\-wifi\-remove \- Remove a network
 .SH SYNOPSIS
-\fBheliosctl wifi remove\fR [\fB\-\-json\fR] [\fB\-\-dry\-run\fR] [\fB\-\-endpoint\fR] [\fB\-\-profile\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fB\-\-ssid\fR> <\fIDEVICE\fR> 
+\fBheliosctl wifi remove\fR [\fB\-\-json\fR] [\fB\-\-dry\-run\fR] [\fB\-\-show\-secrets\fR] [\fB\-\-endpoint\fR] [\fB\-\-profile\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fB\-\-ssid\fR> <\fIDEVICE\fR> 
 .SH DESCRIPTION
 Remove a network
 .SH OPTIONS
@@ -17,6 +17,9 @@ The network\*(Aqs name (SSID)
 .TP
 \fB\-\-dry\-run\fR
 Print the request without sending it
+.TP
+\fB\-\-show\-secrets\fR
+Show secrets in full: destinations\*(Aq and Wi\-Fi networks\*(Aq passphrases (else `***`)
 .TP
 \fB\-\-endpoint\fR \fI<ENDPOINT>\fR
 The Control API\*(Aqs base URL (…/dev)

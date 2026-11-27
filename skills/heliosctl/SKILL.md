@@ -35,10 +35,11 @@ order below, and ask the user before anything disruptive.
 4. **Make the change.** For a stream change, add a client token and `--wait`, for example
    `heliosctl --json streams update <device> <stream> --bitrate 3000 --client-token <token> --wait`.
    Make up a token per change (letters, digits, `-`, `_`), and reuse the same token if you retry
-   that change: the API then returns the first result instead of applying it twice. Wi-Fi changes
-   (`wifi set`, `wifi remove`) take neither: the device applies them before the command returns.
-5. **Check the result** from the exit code and the returned stream (`desired`, `reported`,
-   `pending`, `rejected`).
+   that change: the API then returns the first result instead of applying it twice. The device
+   applies a change before the command returns (or refuses all of it: exit 4, every refused
+   setting listed, nothing changed); `--wait` then waits until the stream is actually `live` or
+   `stopped`. Wi-Fi changes (`wifi set`, `wifi remove`) take neither.
+5. **Check the result** from the exit code and the returned stream (`desired`, `reported`).
 
 ## Ask the user first
 
@@ -57,7 +58,8 @@ order below, and ask the user before anything disruptive.
   conversation. If the user hasn't provided the passphrase in a file, ask them to run the command
   themselves.
 - An SRT destination URL with `passphrase=` must come from `--url-file` (or `-`), never `--url`.
-  heliosctl shows passphrases as `***`; don't try to recover them.
+- heliosctl shows destination and Wi-Fi passphrases as `***`. `--show-secrets` prints them in
+  full: use it only when the user asks to see one, and then show it to them only.
 - Never print, log or repeat a passphrase, PIN or AWS key.
 - `location` returns the device's exact position. Answer the user directly when they ask where
   it is, but don't copy coordinates into notes, issues, commits, logs or anything shared.
@@ -69,12 +71,12 @@ order below, and ask the user before anything disruptive.
 
 | Code | Meaning | What to do |
 | --- | --- | --- |
-| 0 | Done (with `--wait`: applied) | Report the result |
-| 1 | Network or internal error | Retry once with the same client token, then report |
+| 0 | Done (with `--wait`: the stream is live or stopped) | Report the result |
+| 1 | Network or internal error, or (with `--wait`) the stream failed | Read the stream's `lastError`; retry a network error once with the same client token, then report |
 | 2 | Invalid input | Fix the input (the error names the part); don't retry as is |
 | 3 | Device or stream not found | Recheck names with `devices list` / `streams list` |
-| 4 | Refused by the service or the device | Read `error.type`, `reason` or `rejected`; report it |
-| 5 | Timed out (`DeviceUnreachable`, or `--wait` ran out) | The device may still apply it: read it again before retrying |
+| 4 | Refused by the service or the device; nothing changed | Read `error.type` and `refused` (each `setting` and `reason`) or `reason`; report it |
+| 5 | Timed out (`DeviceUnreachable`: offline, nothing changed; or `--wait` ran out) | Check the device is online, read the stream again before retrying |
 | 6 | Not authorized | The user's credentials; don't work around it |
 | 7 | The device hasn't reported that yet | Wait, or check it's online, then read again |
 | 8 | Throttled, after retries | Wait a minute, then retry with the same token |

@@ -13,7 +13,8 @@ pub mod exit {
     pub const INVALID: u8 = 2;
     /// Not found: `DeviceNotFound`, `StreamNotFound`.
     pub const NOT_FOUND: u8 = 3;
-    /// Refused: `SettingUnavailable`, `WifiNetworkRefused`, or the device's `rejected`.
+    /// Refused: `SettingUnavailable`, `StreamChangeRefused`, `WifiNetworkRefused`, or the device's
+    /// `rejected`.
     pub const REFUSED: u8 = 4;
     /// The device didn't answer or apply in time: `DeviceUnreachable`, `--wait` timing out.
     pub const TIMED_OUT: u8 = 5;
@@ -32,7 +33,7 @@ pub enum Failure {
     #[error("{0}")]
     Invalid(String),
     /// The API answered with an error.
-    #[error("{kind}: {message}")]
+    #[error("{kind}: {message}{}", refusals(.members))]
     Api {
         /// HTTP status.
         status: u16,
@@ -57,6 +58,28 @@ pub enum Failure {
     Other(String),
 }
 
+/// A `StreamChangeRefused`'s settings, each with why: ` (profile: no profile "x"; bitrate: ...)`.
+fn refusals(members: &Map<String, Value>) -> String {
+    let Some(refused) = members.get("refused").and_then(Value::as_array) else {
+        return String::new();
+    };
+    let each: Vec<String> = refused
+        .iter()
+        .map(|r| {
+            format!(
+                "{}: {}",
+                r["setting"].as_str().unwrap_or("?"),
+                r["reason"].as_str().unwrap_or("no reason given")
+            )
+        })
+        .collect();
+    if each.is_empty() {
+        String::new()
+    } else {
+        format!(" ({})", each.join("; "))
+    }
+}
+
 impl Failure {
     /// The exit code for it.
     #[must_use]
@@ -70,7 +93,9 @@ impl Failure {
             Self::Api { status, kind, .. } => match kind.as_str() {
                 "ValidationException" | "InvalidDestination" => exit::INVALID,
                 "DeviceNotFound" | "StreamNotFound" => exit::NOT_FOUND,
-                "SettingUnavailable" | "WifiNetworkRefused" => exit::REFUSED,
+                "SettingUnavailable" | "StreamChangeRefused" | "WifiNetworkRefused" => {
+                    exit::REFUSED
+                }
                 "DeviceUnreachable" => exit::TIMED_OUT,
                 "DeviceStateUnavailable" => exit::UNAVAILABLE,
                 "RateLimited" => exit::THROTTLED,

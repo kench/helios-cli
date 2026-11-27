@@ -1,16 +1,19 @@
 .ie \n(.g .ds Aq \(aq
 .el .ds Aq '
-.TH heliosctl-streams-get 1 0.4.0 "heliosctl 0.4.0" "Helios Manual"
+.TH heliosctl-streams-get 1 0.5.0 "heliosctl 0.5.0" "Helios Manual"
 .SH NAME
 heliosctl\-streams\-get \- One stream
 .SH SYNOPSIS
-\fBheliosctl streams get\fR [\fB\-\-json\fR] [\fB\-\-endpoint\fR] [\fB\-\-profile\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIDEVICE\fR> <\fISTREAM\fR> 
+\fBheliosctl streams get\fR [\fB\-\-json\fR] [\fB\-\-show\-secrets\fR] [\fB\-\-endpoint\fR] [\fB\-\-profile\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIDEVICE\fR> <\fISTREAM\fR> 
 .SH DESCRIPTION
 One stream
 .SH OPTIONS
 .TP
 \fB\-\-json\fR
 Print one JSON document on stdout, and errors as JSON on stderr
+.TP
+\fB\-\-show\-secrets\fR
+Show secrets in full: destinations\*(Aq and Wi\-Fi networks\*(Aq passphrases (else `***`)
 .TP
 \fB\-\-endpoint\fR \fI<ENDPOINT>\fR
 The Control API\*(Aqs base URL (…/dev)

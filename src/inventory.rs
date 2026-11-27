@@ -39,7 +39,7 @@ pub enum Profiles {
 /// `heliosctl wifi`.
 #[derive(Debug, Subcommand)]
 pub enum Wifi {
-    /// The Wi-Fi networks the device is set to join (never their passphrases).
+    /// The Wi-Fi networks the device is set to join (passphrases as *** unless --show-secrets).
     List {
         /// A device ID (d-…) or thing name (t-…).
         device: String,

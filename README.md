@@ -40,12 +40,16 @@ Sources: `camera:<video>[,audio=<device>]` (`usb:1-1.3` or `<vid>:<pid>:<serial>
 - Changes (`streams start|stop|update|set-destination`) carry a client token (`--client-token`,
   default random), so they're retried safely. `--dry-run` checks the input with the service's
   rules and prints `{"dryRun": true, "request": {...}}` without sending; for a device ID it needs
-  no credentials. `--wait [--timeout 60]` polls until the device applied the change (0), refused
-  it (4) or the time ran out (5).
-- A Wi-Fi passphrase only comes from `--passphrase-file` (or `-` for stdin), never an argument,
-  and is never printed (`--dry-run` shows `***`). `wifi set` needs `--passphrase-file` or `--open`.
-- SRT passphrases are never printed (`passphrase=***`), and a destination with one is read from
-  `--url-file` (or `-` for stdin), never the command line.
+  no credentials. A device on Helios 0.16.0 or later applies a change before the API answers, or
+  refuses it whole (`StreamChangeRefused`, 4, every refused setting listed); an older one applies
+  it later. `--wait [--timeout 60]` then polls until the stream is `live` (desired live) or
+  `stopped` (0), and fails if it fails (1), a setting is refused (4) or the time runs out (5).
+- A Wi-Fi passphrase only comes from `--passphrase-file` (or `-` for stdin), never an argument.
+  `wifi set` needs `--passphrase-file` or `--open`.
+- A destination with an SRT passphrase is read from `--url-file` (or `-` for stdin), never the
+  command line.
+- Secrets are printed as `***`: SRT passphrases (`passphrase=***`) and Wi-Fi passphrases, which
+  the Control API keeps for operators. `--show-secrets` prints them in full.
 - `heliosctl schema [operation]` prints the API's OpenAPI description (the contract's release
   file, `schema/HeliosControl.openapi.json`, checked in tests against the pinned model).
 - Exit codes:
@@ -56,8 +60,8 @@ Sources: `camera:<video>[,audio=<device>]` (`usb:1-1.3` or `<vid>:<pid>:<serial>
 | 1 | Anything else: a network error, an internal error, a bad response |
 | 2 | Invalid input: usage, `ValidationException`, `InvalidDestination` |
 | 3 | Not found: `DeviceNotFound`, `StreamNotFound` |
-| 4 | Refused: `SettingUnavailable`, `WifiNetworkRefused`, the device's `rejected` |
-| 5 | The device didn't answer or apply in time: `DeviceUnreachable`, `--wait` timing out |
+| 4 | Refused: `SettingUnavailable`, `StreamChangeRefused`, `WifiNetworkRefused`, the device's `rejected` |
+| 5 | The device didn't answer or reach the state in time: `DeviceUnreachable`, `--wait` timing out |
 | 6 | Not authorized: no credentials, HTTP 403 |
 | 7 | The device hasn't reported that: `DeviceStateUnavailable` |
 | 8 | Throttled: `RateLimited`, after retries |
@@ -69,7 +73,7 @@ x86_64 and arm64 (glibc 2.31 or newer: Debian 11, Ubuntu 22.04) and macOS on App
 repository is private, so download with `gh`:
 
 ```sh
-version=v0.4.0 target=x86_64-unknown-linux-gnu   # or aarch64-unknown-linux-gnu, aarch64-apple-darwin
+version=v0.5.0 target=x86_64-unknown-linux-gnu   # or aarch64-unknown-linux-gnu, aarch64-apple-darwin
 gh release download "$version" -R kench/helios-cli -p "heliosctl-*-$target.tar.gz" -p SHA256SUMS
 sha256sum --ignore-missing -c SHA256SUMS          # macOS: shasum -a 256 --ignore-missing -c SHA256SUMS
 tar -xzf heliosctl-*-"$target".tar.gz

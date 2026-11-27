@@ -1,16 +1,19 @@
 .ie \n(.g .ds Aq \(aq
 .el .ds Aq '
-.TH heliosctl-location 1 0.4.0 "heliosctl 0.4.0" "Helios Manual"
+.TH heliosctl-location 1 0.5.0 "heliosctl 0.5.0" "Helios Manual"
 .SH NAME
 heliosctl\-location \- Where a device is: its GPS fix (or the last one), satellites and receivers. This is the device\*(Aqs exact position: keep it out of logs and anything shared
 .SH SYNOPSIS
-\fBheliosctl location\fR [\fB\-\-json\fR] [\fB\-\-endpoint\fR] [\fB\-\-profile\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIDEVICE\fR> 
+\fBheliosctl location\fR [\fB\-\-json\fR] [\fB\-\-show\-secrets\fR] [\fB\-\-endpoint\fR] [\fB\-\-profile\fR] [\fB\-\-region\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIDEVICE\fR> 
 .SH DESCRIPTION
 Where a device is: its GPS fix (or the last one), satellites and receivers. This is the device\*(Aqs exact position: keep it out of logs and anything shared
 .SH OPTIONS
 .TP
 \fB\-\-json\fR
 Print one JSON document on stdout, and errors as JSON on stderr
+.TP
+\fB\-\-show\-secrets\fR
+Show secrets in full: destinations\*(Aq and Wi\-Fi networks\*(Aq passphrases (else `***`)
 .TP
 \fB\-\-endpoint\fR \fI<ENDPOINT>\fR
 The Control API\*(Aqs base URL (…/dev)

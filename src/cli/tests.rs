@@ -210,3 +210,12 @@ async fn a_dry_run_for_a_device_id_needs_no_api() {
     let (code, _, _) = run_args(&["streams", "update", "d-1", "main", "--dry-run"]).await;
     assert_eq!(code, 2, "nothing to change");
 }
+
+#[test]
+fn secrets_are_shown_only_when_asked() {
+    let hidden = Cli::try_parse_from(["heliosctl", "wifi", "list", "d-1"]).unwrap();
+    assert!(!hidden.show_secrets);
+    let shown =
+        Cli::try_parse_from(["heliosctl", "wifi", "list", "d-1", "--show-secrets"]).unwrap();
+    assert!(shown.show_secrets, "global: after the subcommand too");
+}

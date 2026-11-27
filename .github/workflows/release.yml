@@ -3,9 +3,7 @@
 # silicon), each a .tar.gz with the README, the license and the manual pages (man/), and
 # SHA256SUMS, on the GitHub release.
 #
-# Install (the repository is private, so through gh):
-#   gh release download v0.1.0 -R kench/helios-cli -p 'heliosctl-*-x86_64-unknown-linux-gnu.tar.gz' -p SHA256SUMS
-#   sha256sum --ignore-missing -c SHA256SUMS
+# Install: see the README (curl from https://github.com/kench/helios-cli/releases/download/v<version>/).
 name: Release
 
 on:

@@ -69,19 +69,19 @@ Sources: `camera:<video>[,audio=<device>]` (`usb:1-1.3` or `<vid>:<pid>:<serial>
 ## Install
 
 Prebuilt binaries are on each [release](https://github.com/kench/helios-cli/releases): Linux
-x86_64 and arm64 (glibc 2.31 or newer: Debian 11, Ubuntu 22.04) and macOS on Apple silicon. The
-repository is private, so download with `gh`:
+x86_64 and arm64 (glibc 2.31 or newer: Debian 11, Ubuntu 22.04) and macOS on Apple silicon:
 
 ```sh
-version=v0.5.0 target=x86_64-unknown-linux-gnu   # or aarch64-unknown-linux-gnu, aarch64-apple-darwin
-gh release download "$version" -R kench/helios-cli -p "heliosctl-*-$target.tar.gz" -p SHA256SUMS
+version=0.5.0 target=x86_64-unknown-linux-gnu    # or aarch64-unknown-linux-gnu, aarch64-apple-darwin
+base=https://github.com/kench/helios-cli/releases/download/v$version
+curl -fLO "$base/heliosctl-$version-$target.tar.gz" -fLO "$base/SHA256SUMS"
 sha256sum --ignore-missing -c SHA256SUMS          # macOS: shasum -a 256 --ignore-missing -c SHA256SUMS
-tar -xzf heliosctl-*-"$target".tar.gz
-install -m 0755 heliosctl-*-"$target"/heliosctl ~/.local/bin/
-mkdir -p ~/.local/share/man/man1 && cp heliosctl-*-"$target"/man/*.1 ~/.local/share/man/man1/
+tar -xzf "heliosctl-$version-$target.tar.gz"
+install -m 0755 "heliosctl-$version-$target/heliosctl" ~/.local/bin/
+mkdir -p ~/.local/share/man/man1 && cp "heliosctl-$version-$target"/man/*.1 ~/.local/share/man/man1/
 ```
 
-Or build it: `cargo install --locked --git ssh://git@github.com/kench/helios-cli.git`.
+Or build it: `cargo install --locked --git https://github.com/kench/helios-cli.git`.
 
 A release is a `v<version>` tag on `main` matching `Cargo.toml`; `.github/workflows/release.yml`
 checks that, builds, and publishes.
